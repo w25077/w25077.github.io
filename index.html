@@ -116,7 +116,7 @@
       </div>
 
       <!-- 往下滑动提示（缓慢向下动画） -->
-      <div class="scroll-hint" aria-hidden="true">
+      <div class="scroll-hint" id="scrollHint" aria-hidden="true">
         <span class="scroll-hint-text">往下滑动</span>
         <span class="scroll-hint-arrows">
           <i class="scroll-hint-arrow"></i>
@@ -133,7 +133,7 @@
   <section class="slide slide-pane" id="s2">
     <div class="wrap">
       <div class="pane-box">
-        <p class="kicker">01 — 关于</p>
+        <p class="kicker">01 — ABOUT ME</p>
         <h2 class="pane-title">关于我</h2>
         <p class="pane-intro">
           淮北师范大学 · 计算机科学与技术（本科 · 2023.09 – 2027.06）。<br>
@@ -168,7 +168,7 @@
   <section class="slide slide-pane" id="s3">
     <div class="wrap">
       <div class="pane-box">
-        <p class="kicker">02 — 作品</p>
+        <p class="kicker">02 — PORTFOLIO</p>
         <h2 class="pane-title">作品集</h2>
 
         <div class="projs">
@@ -218,7 +218,7 @@
   <section class="slide slide-pane" id="s4">
     <div class="wrap">
       <div class="pane-box">
-        <p class="kicker">03 — 联系</p>
+        <p class="kicker">03 — CONTACT</p>
         <h2 class="pane-title">联系</h2>
         <p class="pane-intro">欢迎与我交流 —— 邮件一般 24 小时内回复。</p>
         <ul class="contact-list">
@@ -234,7 +234,7 @@
   <section class="slide slide-pane slide-steam" id="s5">
     <div class="wrap">
       <div class="pane-box">
-        <p class="kicker">04 — Steam</p>
+        <p class="kicker">04 — STEAM</p>
         <h2 class="pane-title">Steam游戏时长</h2>
         <p class="pane-intro" id="steamSum">数据每日自动同步（GitHub Actions）</p>
       </div>
@@ -243,10 +243,19 @@
       <div class="steam-body" id="steamBody">
         <p class="steam-empty" id="steamEmpty">正在加载 Steam 时长数据…</p>
       </div>
+
+      <!-- 网页最底部：趴着的猫（点击会"哈！"并回到顶部） -->
+      <footer class="site-foot" id="catFooter">
+        <span class="cat-bubble" id="catBubble" aria-hidden="true">哈！</span>
+        <img id="catImg" src="image/cat.png" alt="cat" width="267" height="254">
+      </footer>
     </div>
   </section>
 
 </main>
+
+<!-- 回到顶部按钮（终端 CLI 风格）：仅非首页时显示（script.js 控制 .show） -->
+<button type="button" id="backToTop" aria-label="回到顶部" title="回到顶部">&gt; back_to_top</button>
 
 <!-- 右侧页码导航（首页不计序号；01-04 对应第 2-5 屏） -->
 <nav class="pager" aria-label="页面导航">

@@ -349,6 +349,14 @@
       document.documentElement.classList.toggle("free-scroll", on);
     }
   }
+  // 同步置为自由滚动：在滚轮放行原生滚动前立刻关掉 CSS mandatory 吸附，
+  // 避免"滚轮 → rAF 更新类"之间那一帧被浏览器吸回吸附点
+  function ensureFree() {
+    if (!freeOn) {
+      freeOn = true;
+      document.documentElement.classList.add("free-scroll");
+    }
+  }
   function refresh() {
     updateFree();
   }
@@ -382,11 +390,22 @@
     }
   }
 
+  /* 回到顶部按钮：首页(idx 0)隐藏，其它页显示；
+     往下滑动提示：只在首页显示（fixed 锚点不会叠加到其它页） */
+  var backBtn = document.getElementById("backToTop");
+  var hintEl = document.getElementById("scrollHint");
+  function syncMarker(idx) {
+    updateActive(idx);
+    if (backBtn) backBtn.classList.toggle("show", idx !== 0);
+    // 猫点击回顶后（__catReturn）不显示"往下滑动"提示，直到下次手动翻页
+    if (hintEl) hintEl.classList.toggle("show", idx === 0 && !window.__catReturn);
+  }
+
   function go(target, viaWheel) {
     target = Math.max(0, Math.min(slides.length - 1, target));
     if (anim !== null) cancelAnimationFrame(anim);   // 打断进行中的动画（连续翻页）
     index = target;
-    updateActive(target);
+    syncMarker(target);
     animating = true;      // 动画期间锁定标记：直接定格在目标页，避免中途回跳
     if (viaWheel) nextGoAt = performance.now() + MIN_GAP;
     var fromY = window.scrollY;
@@ -401,15 +420,50 @@
       } else {
         anim = null;
         animating = false;   // 动画结束：恢复滚动监听同步
+        updateFree();        // 落地后校正吸附分区状态
       }
     };
     anim = requestAnimationFrame(step);
   }
 
+  // 快速吸附翻页（不缓动）：用于「超高屏顶缘向上翻」这一确定边界
+  function hardGo(target) {
+    target = Math.max(0, Math.min(slides.length - 1, target));
+    if (anim !== null) cancelAnimationFrame(anim);
+    anim = null;
+    animating = false;
+    index = target;
+    window.scrollTo({ top: slides[target].offsetTop, behavior: "auto" });
+    syncMarker(target);
+    updateFree();
+  }
+
   window.addEventListener("wheel", function (e) {
     if (!enabled() || e.ctrlKey || Math.abs(e.deltaY) < 2) return;  // Ctrl+滚轮=缩放，不拦截
-    // 视口已进入超高内容屏（Steam 墙）：放行原生滚动，可自由滚到底
-    if (tallHitAt(window.scrollY, window.innerHeight)) return;
+    // 分支 1：在超高屏的顶部区域向上滚 → 快速吸附到上一页（不慢滑、不自由滚动）
+    // 覆盖范围：顶缘上方 8px 至墙内下方 120px —— 避免向上滚出墙边界时
+    // 落入原生滚动 + mandatory 吸附的空窗而被吸回/吸乱
+    if (e.deltaY < 0) {
+      for (var i = 0; i < slides.length; i++) {
+        var s = slides[i];
+        if (s.scrollHeight > window.innerHeight + 2) {
+          var d = s.offsetTop - window.scrollY;   // 视口顶距墙顶的距离
+          if (d >= -8 && d <= 120) {
+            e.preventDefault();
+            acc = 0;
+            nextGoAt = performance.now() + MIN_GAP;
+            window.__catReturn = false;   // 手动向上翻页：恢复提示
+            hardGo(index - 1);
+            return;
+          }
+        }
+      }
+    }
+    // 分支 2：视口已进入超高内容屏（Steam 墙内）：放行原生滚动，可自由滚到底
+    if (tallHitAt(window.scrollY, window.innerHeight)) {
+      ensureFree();   // 同步关闭吸附：首帧原生滚动不会被 mandatory 吸回
+      return;
+    }
     e.preventDefault();
 
     var now = performance.now();
@@ -425,6 +479,7 @@
     if (Math.abs(acc) < TRIGGER) return;
     var dir = acc > 0 ? 1 : -1;
     acc = 0;
+    window.__catReturn = false;   // 手动滚轮翻页：恢复"往下滑动"提示
     go(index + dir, true);   // 动画未结束也允许打断 → 连续滚动可约 0.2s 翻一页
   }, { passive: false });
 
@@ -434,11 +489,23 @@
       e.preventDefault();
       var id = a.getAttribute("href");
       var target = slides.findIndex(function (s) { return "#" + s.id === id; });
-      if (target >= 0) go(target, false);   // 页码点击是明确意图，不受最小间隔限制
+      if (target >= 0) {
+        window.__catReturn = false;              // 手动点击导航：恢复提示
+        go(target, false);
+      }
     });
   });
 
-  /* 自由滚动（触屏/滚轮原生模式）下实时同步当前页标记；
+  /* 回到顶部：慢滑回首页（第 1 屏） */
+  if (backBtn) {
+    backBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      window.__catReturn = false;               // 手动回顶：恢复提示
+      go(0, false);
+    });
+  }
+
+  /* 自由滚动（触屏/滚轮原生模式）下实时同步当前页标记与回顶按钮；
    翻页动画进行中（animating）不做同步，标记由 go() 锁定在目标页 */
   var syncScheduled = false;
   window.addEventListener("scroll", function () {
@@ -448,11 +515,19 @@
       syncScheduled = false;
       if (animating) return;
       updateFree();              // 滚动中跨过超高屏边界时切换吸附开/关
-      updateActive(currentIndex());
+      var ci = currentIndex();
+      index = ci;                // 原生滚动后同步翻页基准：避免离开超高屏
+                                 // 区域后第一次滚轮按旧 index 错跳一页
+      syncMarker(ci);
     });
   }, { passive: true });
 
-  updateActive(currentIndex());   // 初始状态
+  syncMarker(currentIndex());   // 初始状态
+  window.__navModule = true;    // 平滑导航模块已就绪（供回顶按钮降级逻辑判断）
+  // 供外部调用：慢滑回到网页顶部（猫点击等场景）
+  window.SiteNav = {
+    goTop: function () { go(0, false); }
+  };
 })();
 
 /* ============================================================
@@ -1031,5 +1106,71 @@
     EMPTY.textContent = "快照加载失败：请确认 data/steam_games.json 已存在，"
       + "并手动运行 Actions 中的 “Refresh Steam hours snapshot”。";
     reflow();
+  });
+})();
+
+/* ============================================================
+   回到顶部按钮 · 降级逻辑
+   - 主平滑导航模块（window.__navModule）启用时，显示状态与
+     慢滑回顶均由该模块负责，这里不重复处理
+   - 模块未启用（如 prefers-reduced-motion）时：按滚动位置
+     显示按钮，点击用原生平滑滚动回顶
+   ============================================================ */
+(function () {
+  "use strict";
+  var btn = document.getElementById("backToTop");
+  var hintEl = document.getElementById("scrollHint");
+  if (!btn && !hintEl) return;
+  if (window.__navModule) return;   // 主模块已接管
+
+  if (btn) {
+    btn.addEventListener("click", function (e) {
+      e.preventDefault();
+      try {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } catch (err) { /* 老浏览器 */ window.scrollTo(0, 0); }
+    });
+  }
+
+  var pending = false;
+  window.addEventListener("scroll", function () {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(function () {
+      pending = false;
+      var y = window.scrollY;
+      var vh = window.innerHeight;
+      if (btn) btn.classList.toggle("show", y > vh * 0.4);
+      if (hintEl) hintEl.classList.toggle("show", y < vh * 0.6);
+    });
+  }, { passive: true });
+})();
+
+/* ============================================================
+   底部小猫互动：点击 → 气泡"哈！" → 0.5s 后慢滑回网页顶部
+   ============================================================ */
+(function () {
+  "use strict";
+  var img = document.getElementById("catImg");
+  var bubble = document.getElementById("catBubble");
+  if (!img || !bubble) return;
+
+  var hideTimer = null;    // 气泡确认定时器（保持 0.3s 显示时长）
+  img.addEventListener("click", function () {
+    // 连续点击不叠加：重置气泡定时器
+    clearTimeout(hideTimer);
+    bubble.classList.add("show");
+    // 气泡显示时长保持现状（0.3s 后淡出）
+    hideTimer = setTimeout(function () {
+      bubble.classList.remove("show");
+    }, 300);
+    // 同时立即回到网页顶部（与气泡出现同步）
+    window.__catReturn = true;                // 猫带回顶：抑制"往下滑动"提示
+    if (window.SiteNav && window.SiteNav.goTop) {
+      window.SiteNav.goTop();                       // 站内慢滑回顶
+    } else {
+      try { window.scrollTo({ top: 0, behavior: "smooth" }); }
+      catch (err) { window.scrollTo(0, 0); }        // 降级（如减少动效）
+    }
   });
 })();
