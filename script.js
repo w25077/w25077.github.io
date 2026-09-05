@@ -311,7 +311,7 @@
   if (!slides.length) return;
   if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-  var DURATION = 850;    // 单次翻页动画时长（ms）
+  var DURATION = 1000;   // 单次翻页动画时长（ms）：慢速缓动，手感顺滑
   var TRIGGER = 60;      // 触发翻页的累积滚轮量（px）
   var MIN_GAP = 200;     // 连续翻页最小间隔（ms）：到达后可打断动画翻下一页
   var GAP = 180;         // 超过该间隔视为新一轮手势，重置累积量
@@ -326,20 +326,41 @@
   var anim = null;
   var animating = false;   // 翻页动画进行中：锁定当前页标记，滚动监听不得改写
   var nextGoAt = 0;      // 距上次滚轮翻页 MIN_GAP 内忽略滚轮（防连飞），之后可打断动画
-  var fits = true;
+  // 超高内容屏（如 Steam 封面墙）判定与分区：
+  // 视口与这类屏相交 → 返回 true（此时放行原生滚动并关吸附）
+  function tallHitAt(y, vh) {
+    for (var i = 0; i < slides.length; i++) {
+      var s = slides[i];
+      if (s.scrollHeight <= vh + 2) continue;
+      var top = s.offsetTop;
+      var bot = top + s.offsetHeight;
+      if (y + vh > top + 1 && y < bot - 1) return true;
+    }
+    return false;
+  }
 
+  // 分区吸附开关：普通页保持吸附 + JS 慢速翻页；
+  // 视口进入超高屏才临时关闭（html.free-scroll），离开立即恢复
+  var freeOn = false;
+  function updateFree() {
+    var on = tallHitAt(window.scrollY, window.innerHeight);
+    if (on !== freeOn) {
+      freeOn = on;
+      document.documentElement.classList.toggle("free-scroll", on);
+    }
+  }
   function refresh() {
-    // 任一页内容高于视口时退回原生滚动，防止页底内容够不到
-    fits = slides.every(function (s) {
-      return s.scrollHeight <= window.innerHeight + 2;
-    });
-    document.documentElement.classList.toggle("free-scroll", !fits);
+    updateFree();
   }
   refresh();
   window.addEventListener("resize", refresh);
+  // 动态内容（如 Steam 封面墙异步渲染）完成后需重测高度
+  window.addEventListener("site:reflow", refresh);
+  window.addEventListener("load", refresh);
 
+  // 翻页能力只与窗口尺寸有关；超高屏区域由 tallHitAt 单独放行
   function enabled() {
-    return fits && window.innerWidth >= MIN_W && window.innerHeight >= MIN_H;
+    return window.innerWidth >= MIN_W && window.innerHeight >= MIN_H;
   }
 
   /* —— 页码导航：当前页标记 ——
@@ -387,6 +408,8 @@
 
   window.addEventListener("wheel", function (e) {
     if (!enabled() || e.ctrlKey || Math.abs(e.deltaY) < 2) return;  // Ctrl+滚轮=缩放，不拦截
+    // 视口已进入超高内容屏（Steam 墙）：放行原生滚动，可自由滚到底
+    if (tallHitAt(window.scrollY, window.innerHeight)) return;
     e.preventDefault();
 
     var now = performance.now();
@@ -424,6 +447,7 @@
     requestAnimationFrame(function () {
       syncScheduled = false;
       if (animating) return;
+      updateFree();              // 滚动中跨过超高屏边界时切换吸附开/关
       updateActive(currentIndex());
     });
   }, { passive: true });
@@ -907,8 +931,9 @@
 
 /* ============================================================
    Steam 游戏时长页：读取 data/steam_games.json（Actions 每日快照）
-   - 摘要行 + Top 12 时长榜（横向进度条按最大值归一）
-   - 快照为空/失败时显示引导文案，不打断整站
+   - 封面墙：每个游戏一张 Steam 封面图，密集平铺，可内滚
+   - 封面上叠加名次 + 时长角标，点击跳转 Steam 商店
+   - 封面加载失败自动降级为深色底 + 游戏名
    ============================================================ */
 (function () {
   "use strict";
@@ -918,8 +943,8 @@
   var EMPTY = document.getElementById("steamEmpty");
   if (!SUM || !BODY || !EMPTY) return;
 
-  var TOP = 12;               // 页面展示前 12 款
   var SNAPSHOT_URL = "data/steam_games.json";
+  var CDN = "https://cdn.akamai.steamstatic.com/steam/apps/";
 
   function pad2(n) { return n < 10 ? "0" + n : String(n); }
 
@@ -934,10 +959,40 @@
     return Number(h || 0).toLocaleString("zh-CN", { maximumFractionDigits: 1 });
   }
 
+  // 角标时长：≥100h 取整，其余保留 1 位小数
+  function shortH(h) {
+    h = Number(h || 0);
+    return h >= 100 ? String(Math.round(h)) : String(Math.floor(h * 10) / 10);
+  }
+
   function esc(s) {
     return String(s == null ? "" : s)
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  // 内容渲染完成 → 通知滚动模块重新检测页面高度（吸附/自由滚动切换）
+  function reflow() {
+    if (typeof CustomEvent === "function") {
+      window.dispatchEvent(new CustomEvent("site:reflow"));
+    }
+  }
+
+  function tileHtml(g, i) {
+    var img = g.appid ? CDN + esc(g.appid) + "/capsule_231x87.jpg" : "";
+    var imgTag = img
+      ? '<img src="' + img + '" alt="' + esc(g.name) + '" loading="lazy"' +
+        ' onerror="this.parentNode.classList.add(\'noimg\')">'
+      : "";
+    return '<a class="st-tile' + (img ? "" : " noimg") + '" ' +
+      'href="https://store.steampowered.com/app/' +
+      esc(g.appid) + '" target="_blank" rel="noopener" ' +
+      'title="' + esc(g.name) + " · " + esc(shortH(g.hours)) + ' 小时">' +
+      imgTag +
+      '<span class="st-name">' + esc(g.name) + "</span>" +
+      '<span class="st-rank">' + pad2(i + 1) + "</span>" +
+      '<b class="st-time">' + esc(shortH(g.hours)) + '<i class="st-u">h</i></b>' +
+      "</a>";
   }
 
   function render(payload) {
@@ -948,6 +1003,7 @@
       SUM.textContent = "暂无时长记录（快照为空）";
       EMPTY.textContent = "首次同步尚未完成：请在仓库配置 STEAM_API_KEY 后，"
         + "手动运行 Actions 中的 “Refresh Steam hours snapshot”。";
+      reflow();
       return;
     }
     games.sort(function (a, b) { return (b.hours || 0) - (a.hours || 0); });
@@ -956,27 +1012,15 @@
     SUM.textContent = "共 " + (payload.totalGames != null ? payload.totalGames : games.length)
       + " 款游戏 · 累计 " + fmtHours(payload.totalHours) + " 小时";
 
-    var maxH = games[0].hours || 1;
-    var rows = "";
-    var shown = games.slice(0, TOP);
-    for (var i = 0; i < shown.length; i++) {
-      var g = shown[i];
-      var pct = Math.max(2, Math.min(100, Math.round(g.hours / maxH * 100)));
-      rows +=
-        '<div class="steam-row">' +
-        '<span class="steam-rank">' + pad2(i + 1) + "</span>" +
-        '<span class="steam-main">' +
-        '<span class="steam-name" title="' + esc(g.name) + '">' + esc(g.name) + "</span>" +
-        '<span class="steam-bar"><i style="width:' + pct + '%"></i></span>' +
-        "</span>" +
-        '<span class="steam-h">' + fmtHours(g.hours) + '<i class="steam-u">h</i></span>' +
-        "</div>";
-    }
+    var tiles = "";
+    for (var i = 0; i < games.length; i++) tiles += tileHtml(games[i], i);
+
     var foot = (payload.source ? "Steam Web API · " : "") +
       (when ? "更新于 " + when : "") + " · GitHub Actions 每日同步";
     EMPTY.hidden = true;
-    BODY.innerHTML = '<div class="steam-list">' + rows + "</div>" +
+    BODY.innerHTML = '<div class="st-grid">' + tiles + "</div>" +
       '<p class="steam-foot">数据：' + foot + "</p>";
+    reflow();
   }
 
   fetch(SNAPSHOT_URL, { cache: "no-store" }).then(function (res) {
@@ -986,5 +1030,6 @@
     SUM.textContent = "Steam 数据暂时不可用";
     EMPTY.textContent = "快照加载失败：请确认 data/steam_games.json 已存在，"
       + "并手动运行 Actions 中的 “Refresh Steam hours snapshot”。";
+    reflow();
   });
 })();

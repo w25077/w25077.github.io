@@ -793,77 +793,125 @@ a:hover { color: var(--accent); }
   .contact-list li { flex-direction: column; align-items: flex-start; gap: 4px; }
 }
 
-/* ===== Steam 游戏时长榜 ===== */
-.steam-body { margin-top: 18px; }
+/* ===== Steam 游戏时长墙（封面平铺 + 时长角标） ===== */
+/* 普通文档流：封面墙随内容自然撑高；内容超过一屏时全站自动
+   退出吸附（JS 检测到超高 slide → html.free-scroll），
+   可连续滚动翻到底部看完整面墙 */
+.slide-steam .wrap {
+  justify-content: flex-start;
+  padding-bottom: clamp(30px, 5vh, 56px);
+}
+
+.steam-body {
+  margin-top: 16px;
+  padding-right: 4px;
+}
 
 .steam-empty { font-size: 13.5px; line-height: 1.8; color: var(--dim); }
 
-.steam-list { display: flex; flex-direction: column; }
-
-.steam-row {
+/* 封面平铺网格 */
+.st-grid {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 2px 12px;
-  padding: 8px 2px;
-  border-top: 1px solid var(--line);
+  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+  gap: 12px;
+  align-content: start;
 }
 
-.steam-list .steam-row:first-child {
-  border-top: 0;
-  padding-top: 2px;
-}
-
-.steam-rank {
-  font-family: var(--mono);
-  font-size: 11.5px;
-  color: var(--dim);
-  align-self: start;
-  padding-top: 3px;
-}
-
-.steam-main {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.steam-name {
-  font-size: 14.5px;
-  color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* 时长条：按榜首时长归一 */
-.steam-bar {
+.st-tile {
+  position: relative;
   display: block;
-  height: 3px;
-  border-radius: 2px;
-  background: rgba(165, 178, 230, 0.12);
+  aspect-ratio: 231 / 87;
+  border-radius: 8px;
   overflow: hidden;
+  background: #000;   /* 保底黑底：加载中 / 加载失败均为纯黑 */
+  border: 1px solid rgba(165, 178, 230, 0.14);
+  transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
-.steam-bar i {
-  display: block;
+.st-tile img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
   height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #1f9d5c, #3fd17e);
+  object-fit: cover;
+  transition: transform 0.35s ease;
 }
 
-.steam-h {
+.st-tile:hover {
+  border-color: rgba(125, 140, 255, 0.6);
+  transform: translateY(-2px);
+}
+
+.st-tile:hover img { transform: scale(1.05); }
+
+/* 底部压暗渐隐，保证角标可读 */
+.st-tile::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 48%;
+  background: linear-gradient(180deg, transparent, rgba(3, 7, 18, 0.75));
+  pointer-events: none;
+}
+
+.st-name { display: none; }
+
+/* ===== 封面保底：封面获取失败 → 纯黑背景 + 白色标题居中 ===== */
+.st-tile.noimg {
+  background: #000;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.st-tile.noimg img { display: none; }   /* 隐藏破图图标 */
+
+.st-tile.noimg .st-name {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  inset: 0;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #ffffff;
+  text-align: center;
+  overflow: hidden;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+/* 名次角标（左上） */
+.st-rank {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  z-index: 1;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(5, 9, 22, 0.6);
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+
+/* 时长角标（右下） */
+.st-time {
+  position: absolute;
+  right: 8px;
+  bottom: 5px;
+  z-index: 1;
   font-family: var(--mono);
   font-size: 13px;
-  font-weight: 600;
-  color: var(--ink);
-  white-space: nowrap;
-  align-self: start;
-  padding-top: 3px;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
 }
 
-.steam-u { font-style: normal; font-size: 10px; color: var(--dim); margin-left: 2px; }
+.st-time .st-u { font-style: normal; font-size: 0.68em; font-weight: 600; opacity: 0.8; margin-left: 2px; }
 
 .steam-foot {
   margin-top: 14px;
@@ -871,6 +919,11 @@ a:hover { color: var(--accent); }
   font-size: 11px;
   letter-spacing: 0.05em;
   color: var(--dim);
+}
+
+@media (max-width: 640px) {
+  .st-grid { grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 9px; }
+  .st-time { font-size: 12px; }
 }
 
 /* ===== 左侧页码导航：终端 CLI 菜单（方形硬边 + 提示符 + 闪烁光标） ===== */
