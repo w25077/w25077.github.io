@@ -20,7 +20,8 @@
   var LIVE_TIMEOUT_MS = 7000;       // 实时源超时（含大陆网络不佳场景）
 
   // 热力图栅格常量（与 style.css 中 .gh-canvas 的最小宽度一致）
-  var CELL = 11;
+  // 9px 格子 + 3px 间距：整体宽度更紧凑，能完整放进首页双栏布局
+  var CELL = 9;
   var GAP = 3;
   var PITCH = CELL + GAP;
   var WEEKS = 53;
@@ -323,6 +324,7 @@
   var acc = 0;
   var lastWheelAt = 0;
   var anim = null;
+  var animating = false;   // 翻页动画进行中：锁定当前页标记，滚动监听不得改写
   var nextGoAt = 0;      // 距上次滚轮翻页 MIN_GAP 内忽略滚轮（防连飞），之后可打断动画
   var fits = true;
 
@@ -340,10 +342,31 @@
     return fits && window.innerWidth >= MIN_W && window.innerHeight >= MIN_H;
   }
 
+  /* —— 页码导航：当前页标记 ——
+     以视口垂直中点为基准，选中中点所在的屏 */
+  function currentIndex() {
+    var mid = window.scrollY + window.innerHeight / 2;
+    var best = 0, bestD = Infinity;
+    slides.forEach(function (s, i) {
+      var d = Math.abs((s.offsetTop + s.offsetHeight / 2) - mid);
+      if (d < bestD) { bestD = d; best = i; }
+    });
+    return best;
+  }
+
+  function updateActive(idx) {
+    var links = document.querySelectorAll(".pager a");
+    for (var i = 0; i < links.length; i++) {
+      links[i].classList.toggle("active", i === idx);
+    }
+  }
+
   function go(target, viaWheel) {
     target = Math.max(0, Math.min(slides.length - 1, target));
     if (anim !== null) cancelAnimationFrame(anim);   // 打断进行中的动画（连续翻页）
     index = target;
+    updateActive(target);
+    animating = true;      // 动画期间锁定标记：直接定格在目标页，避免中途回跳
     if (viaWheel) nextGoAt = performance.now() + MIN_GAP;
     var fromY = window.scrollY;
     var toY = slides[target].offsetTop;
@@ -352,7 +375,12 @@
       if (start === null) start = ts;
       var p = Math.min(1, (ts - start) / DURATION);
       window.scrollTo({ top: fromY + (toY - fromY) * easeOutQuart(p), behavior: "auto" });
-      anim = (p < 1) ? requestAnimationFrame(step) : null;
+      if (p < 1) {
+        anim = requestAnimationFrame(step);
+      } else {
+        anim = null;
+        animating = false;   // 动画结束：恢复滚动监听同步
+      }
     };
     anim = requestAnimationFrame(step);
   }
@@ -386,22 +414,41 @@
       if (target >= 0) go(target, false);   // 页码点击是明确意图，不受最小间隔限制
     });
   });
+
+  /* 自由滚动（触屏/滚轮原生模式）下实时同步当前页标记；
+   翻页动画进行中（animating）不做同步，标记由 go() 锁定在目标页 */
+  var syncScheduled = false;
+  window.addEventListener("scroll", function () {
+    if (syncScheduled) return;
+    syncScheduled = true;
+    requestAnimationFrame(function () {
+      syncScheduled = false;
+      if (animating) return;
+      updateActive(currentIndex());
+    });
+  }, { passive: true });
+
+  updateActive(currentIndex());   // 初始状态
 })();
 
 /* ============================================================
    贪吃蛇（游戏机 · 贡献格子即棋盘）
    - 53×7 格子为棋盘；撞屏幕边缘从对面穿回（环形世界）
-   - 撞到自己身体 → GAME OVER 提示并自动重开
+   - 首次按下任意按钮前：AI 自动游玩演示，长度 10
+   - 按下任意按钮（机身方向键/A/B 或对应键盘键）→ 接管为玩家
+     模式，以长度 3 重新开始
+   - 撞到自己身体 → GAME OVER 提示并自动重开（保持当前模式）
    - 机身上下左右（或键盘方向键/WASD）控制方向
    - B（键盘 Z/Shift）按住加速；A（键盘 X/空格）蛇头冒出
      「EAT」思考气泡，持续 1.5s
+   - 蛇身从蛇头向蛇尾渐变变透明（最低 50%，可透出屏幕底色）
    - 得分显示在屏幕右上角 LEN n
    ============================================================ */
 (function () {
   "use strict";
 
   var COLS = 53, ROWS = 7, SIZE = COLS * ROWS;
-  var BASE_MS = 240, FAST_MS = 100, EAT_MS = 1500;
+  var BASE_MS = 240, FAST_MS = 100, EAT_MS = 1500, AUTO_LEN = 10;
 
   var cells = null;          // 已渲染格子（w 主序：index = c*7+r）
   var snake = [];            // 头部在前
@@ -413,6 +460,7 @@
   var accel = false;
   var bubbleTimer = null;
   var accelPointer = null;
+  var mode = "auto";   // "auto"：首次按键前自动游玩（长度 10）；"player"：玩家已接管（长度 3）
 
   function cellAt(c, r) {
     c = (c + COLS) % COLS; r = (r + ROWS) % ROWS;
@@ -443,15 +491,33 @@
     return free.length ? free[Math.floor(Math.random() * free.length)] : null;
   }
 
+  /* 蛇身透明度渐变：距蛇头越远越透明，最透明不低于 50%
+     t = 0 紧邻蛇头（完全不透明，亮黄 #ffd41f），t = 1 蛇尾（半透明，可透出 LCD 底色） */
+  var OPACITY_TAIL = 0.5;   // 蛇尾透明度下限 —— 最透明也只能到半透明
+
+  function bodyOpacity(t) {
+    t = Math.max(0, Math.min(1, t));
+    return Math.max(OPACITY_TAIL, 1 - (1 - OPACITY_TAIL) * t);
+  }
+
   function paint() {
     if (!cells) return;
     var i, n = cells.length;
-    for (i = 0; i < n; i++) cells[i].classList.remove("snake", "snake-head", "food");
+    var len = snake.length;
+    for (i = 0; i < n; i++) {
+      cells[i].classList.remove("snake", "snake-head", "food");
+      cells[i].style.background = "";   // 清掉上一帧的蛇身内联样式，避免残影
+      cells[i].style.opacity = "";
+    }
     snake.forEach(function (p, idx) {
       var el = cellAt(p.c, p.r);
       if (!el) return;
       el.classList.add("snake");
-      if (idx === 0) el.classList.add("snake-head");
+      if (idx === 0) {
+        el.classList.add("snake-head");               // 蛇头：完全不透明亮黄
+      } else {
+        el.style.opacity = bodyOpacity(idx / (len - 1));   // 越靠尾越透明（最低 50%）
+      }
     });
     if (food) {
       var fe = cellAt(food.c, food.r);
@@ -474,11 +540,15 @@
       setTimeout(function () { o.remove(); }, 1000);
     }
     // 等 GAME OVER 提示结束后再重开：期间棋盘保持碰撞现场，避免蛇/食物瞬间跳位闪动
-    setTimeout(function () { if (!running) reset(); }, 1000);
+    setTimeout(function () { if (!running) reset(mode === "auto" ? AUTO_LEN : 3); }, 1000);
   }
 
   function step() {
     if (!running) return;
+    if (mode === "auto") {
+      var a = autoDir();
+      dirC = a.dc; dirR = a.dr;   // 自动游玩：每步由 AI 决定方向
+    }
     var head = snake[0];
     var nc = head.c + dirC, nr = head.r + dirR;
     // 边缘穿越：从对侧回来
@@ -506,10 +576,12 @@
     timer = setTimeout(function () { step(); schedule(); }, accel ? FAST_MS : BASE_MS);
   }
 
-  function reset() {
-    snake = [{ c: 26, r: 3 }, { c: 25, r: 3 }, { c: 24, r: 3 }];
+  function reset(len) {
+    var l = len || 3;
+    snake = [];
+    for (var i = 0; i < l; i++) snake.push({ c: 26 - i, r: 3 });
     dirC = 1; dirR = 0;
-    score = 3;
+    score = l;
     accel = false;
     food = pickFood();
     running = true;
@@ -520,13 +592,53 @@
 
   function start() {
     if (!ready() || running) return;
-    reset();
+    reset(mode === "auto" ? AUTO_LEN : 3);
   }
 
   function resync() {
     if (!ready()) return;
     if (!running) { start(); return; }
     paint();   // 格子重建（如实时源升级重绘）后恢复蛇与食物
+  }
+
+  /* —— 自动游玩（首次按键前） —— */
+  function wrapDist(a, b, n) {
+    var d = Math.abs(a - b);
+    return Math.min(d, n - d);
+  }
+
+  function autoDir() {
+    var head = snake[0];
+    var turns = [0, 1, -1];        // 候选顺序：直行、顺时针、逆时针
+    var safe = [];
+    var best = null, bestD = Infinity;
+    for (var i = 0; i < turns.length; i++) {
+      var t = turns[i];
+      var ndc = t === 0 ? dirC : (t === 1 ? -dirR : dirR);
+      var ndr = t === 0 ? dirR : (t === 1 ? dirC : -dirC);
+      var nc = (head.c + ndc + COLS) % COLS;
+      var nr = (head.r + ndr + ROWS) % ROWS;
+      if (snake.some(function (p) { return p.c === nc && p.r === nr; })) continue;
+      safe.push({ dc: ndc, dr: ndr });
+      if (!food) continue;
+      // 环形世界曼哈顿距离，选最接近食物的安全方向
+      var d = wrapDist(nc, food.c, COLS) + wrapDist(nr, food.r, ROWS);
+      if (d < bestD) { bestD = d; best = { dc: ndc, dr: ndr }; }
+    }
+    if (!food) return safe[0] || { dc: dirC, dr: dirR };
+    if (!safe.length) return { dc: dirC, dr: dirR };   // 无安全方向：维持原向（自食 → 重开）
+    if (safe.length > 1 && Math.random() < 0.15)       // 小概率随机抖动，避免贪心循环
+      return safe[Math.floor(Math.random() * safe.length)];
+    return best || safe[0];
+  }
+
+  /* 首次按下任意按钮：从自动游玩切换到玩家模式，以长度 3 重新开始 */
+  function takeOver() {
+    if (mode !== "auto") return;
+    mode = "player";
+    var o = document.querySelector(".gb-screen .gameover");
+    if (o) o.remove();
+    reset(3);
   }
 
   function setDir(dc, dr) {
@@ -577,6 +689,7 @@
       : dirs.right;
     arm.addEventListener("pointerdown", function (e) {
       e.preventDefault();
+      takeOver();          // 首次按键 → 玩家模式（长度 3）
       setDir(d.dc, d.dr);
     });
   });
@@ -589,11 +702,13 @@
     if (key === "A") {
       btn.addEventListener("pointerdown", function (e) {
         e.preventDefault();
+        takeOver();
         showEat();
       });
     } else if (key === "B") {
       btn.addEventListener("pointerdown", function (e) {
         e.preventDefault();
+        takeOver();
         accelPointer = e.pointerId;
         setAccel(true);
       });
@@ -615,12 +730,12 @@
   /* —— 键盘（便于桌面调试） —— */
   window.addEventListener("keydown", function (e) {
     var k = e.key;
-    if (k === "ArrowUp" || k === "w" || k === "W") { e.preventDefault(); setDir(0, -1); }
-    else if (k === "ArrowDown" || k === "s" || k === "S") { e.preventDefault(); setDir(0, 1); }
-    else if (k === "ArrowLeft" || k === "a" || k === "A") { e.preventDefault(); setDir(-1, 0); }
-    else if (k === "ArrowRight" || k === "d" || k === "D") { e.preventDefault(); setDir(1, 0); }
-    else if (k === "z" || k === "Z" || k === "Shift") { e.preventDefault(); setAccel(true); }
-    else if (k === "x" || k === "X" || k === " ") { e.preventDefault(); showEat(); }
+    if (k === "ArrowUp" || k === "w" || k === "W") { e.preventDefault(); takeOver(); setDir(0, -1); }
+    else if (k === "ArrowDown" || k === "s" || k === "S") { e.preventDefault(); takeOver(); setDir(0, 1); }
+    else if (k === "ArrowLeft" || k === "a" || k === "A") { e.preventDefault(); takeOver(); setDir(-1, 0); }
+    else if (k === "ArrowRight" || k === "d" || k === "D") { e.preventDefault(); takeOver(); setDir(1, 0); }
+    else if (k === "z" || k === "Z" || k === "Shift") { e.preventDefault(); takeOver(); setAccel(true); }
+    else if (k === "x" || k === "X" || k === " ") { e.preventDefault(); takeOver(); showEat(); }
   });
   window.addEventListener("keyup", function (e) {
     var k = e.key;
@@ -628,4 +743,248 @@
   });
 
   window.SnakeGame = { resync: resync, start: start };
+})();
+
+/* ============================================================
+   背景装饰：0/1 数码雨（终端绿 · 高密度版）
+   - 每条流是笔直的竖线：同流字符严格同列、纵向等距，无抖动
+   - 每条流独立：随机起点高度 / 长度 / 间距 / 速度，长短参差
+   - 深度分层视差：近层大、亮、快，远层小、暗、慢
+   - 终端绿（无发白高亮）：流头最亮，向下渐隐，拖尾短
+   - 画布起点右移避开左侧导航（见 #binaryRain CSS）
+   - prefers-reduced-motion 下不启动
+   ============================================================ */
+(function () {
+  "use strict";
+
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  var canvas = document.getElementById("binaryRain");
+  if (!canvas) return;
+  var ctx = canvas.getContext && canvas.getContext("2d");
+  if (!ctx) return;
+
+  var RISE = 92;        // 基准上升速度（px/s），再按深度缩放
+  var FLIP = 1.3;       // 可见字符每秒随机翻转 0↔1 的概率基数
+  var MAX_LEN = 32;     // 单条流同时可见字符上限（长流可超过一屏的 1/3）
+  var MIN_GAP = 5.5;    // 相邻流的最小水平间距（px）：更密
+  var dpr = window.devicePixelRatio || 1;
+
+  var W = 100;
+  var H = 600;
+  var xs = [];          // 各条流的固定水平位置（随机散布）
+  var streams = [];     // 每条流的状态（null = 空闲）
+  var idle = [];        // 空闲倒计时（s）
+  var last = 0;
+
+  function setup() {
+    W = canvas.clientWidth || 100;
+    H = window.innerHeight || 600;
+    canvas.width = Math.max(1, Math.round(W * dpr));
+    canvas.height = Math.max(1, Math.round(H * dpr));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // 随机散布列位（保证最小间距，不整齐但互不粘连）；列数更多，密度更高
+    var n = Math.max(8, Math.min(24, Math.round(W / 5.5)));
+    xs = [];
+    var tries = 0;
+    while (xs.length < n && tries < 160) {
+      tries++;
+      var x = 4 + Math.random() * Math.max(8, W - 12);
+      var ok = true;
+      for (var i = 0; i < xs.length; i++) {
+        if (Math.abs(x - xs[i]) < MIN_GAP) { ok = false; break; }
+      }
+      if (ok) xs.push(x);
+    }
+    xs.sort(function (a, b) { return a - b; });
+
+    streams = [];
+    idle = [];
+    for (var c = 0; c < xs.length; c++) idle.push(Math.random() * 0.4);   // 快速填满画面
+  }
+
+  // 在某列位发起一条新流：深度 / 起点 / 长度 / 字号 / 速度 / 衰减全随机
+  function startStream(i, h) {
+    var d = 0.1 + Math.random() * 0.9;               // 深度：1 近 / 0 远
+    var y0 = h * (0.08 + Math.random() * 0.87);      // 起点：几乎全屏随机
+    // 行程长度混合分布：约一半短流、一半长流（可出现贯穿大半个屏幕的流）
+    var travel = Math.random() < 0.5
+      ? 45 + Math.random() * 220                       // 短流：45–265
+      : 220 + Math.random() * 530;                     // 长流：220–750
+    // 期望可见长度（字符串实际铺开的长短）：40–340px 连续随机，且不超过行程
+    var visible = Math.min(travel, 40 + Math.random() * 300);
+    var spd = RISE * (0.5 + 0.7 * d) * (0.85 + Math.random() * 0.35);
+    streams[i] = {
+      x: xs[i],
+      size: 9 + Math.round(5 * d),                   // 字号 9–14：近大远小，大小错落
+      dim: 0.4 + 0.55 * d,                           // 近亮远暗
+      spd: spd,
+      step: 12 + Math.random() * 6,                  // 字符纵向间距（12–18，疏密随机）
+      decay: 3.5 * spd / visible,                    // 按可见长度定制衰减：短流快隐、长流慢隐
+      y0: y0,
+      y: y0,
+      yEnd: y0 - travel,
+      next: y0,
+      k: 0,
+      chars: []
+    };
+  }
+
+  function tick(ts) {
+    if (!last) last = ts;
+    var dt = Math.min(0.05, (ts - last) / 1000);
+    last = ts;
+
+    if (dt > 0) {
+      var i, j;
+      // 1) 空闲列位按各自倒计时发起新流
+      for (i = 0; i < xs.length; i++) {
+        if (!streams[i]) {
+          idle[i] -= dt;
+          if (idle[i] <= 0) {
+            startStream(i, H);
+            idle[i] = -1;
+          }
+        }
+      }
+
+      // 2) 推进：列头上移 → 沿途按本流间距生成字符（笔直竖线）
+      for (i = 0; i < xs.length; i++) {
+        var s = streams[i];
+        if (!s) continue;
+        s.y -= s.spd * dt;
+        var guard = 0;
+        while (s.next > 3 && s.y <= s.next && s.chars.length < MAX_LEN && guard++ < 4) {
+          s.chars.push({
+            y: s.next,                     // 同流字符纵向等距 → 笔直的竖线
+            cx: s.x,                       // 同流字符严格同列，无横向偏移
+            ch: Math.random() < 0.5 ? "0" : "1",
+            glow: 1
+          });
+          s.k++;
+          s.next = s.y0 - s.k * s.step;
+        }
+        // 字符按本流衰减率渐隐（拖尾长短随流变化）+ 流内随机翻转
+        var sf = Math.exp(-s.decay * dt);
+        for (j = s.chars.length - 1; j >= 0; j--) {
+          var cd = s.chars[j];
+          cd.glow *= sf;
+          if (cd.glow < 0.03 || cd.y > H + 8) s.chars.splice(j, 1);
+          else if (Math.random() < FLIP * dt) cd.ch = cd.ch === "0" ? "1" : "0";
+        }
+        // 流走完且字符消散 → 释放列位，几乎立刻重新发起（保持高密度）
+        if (s.y <= s.yEnd && s.chars.length === 0) {
+          streams[i] = null;
+          idle[i] = 0.02 + Math.random() * 0.35;
+        }
+      }
+
+      // 3) 绘制：终端绿三级渐变（头部深绿最亮 → 尾段渐隐），无发白高亮
+      ctx.clearRect(0, 0, W, H);
+      ctx.textBaseline = "top";
+      for (i = 0; i < xs.length; i++) {
+        var st = streams[i];
+        if (!st || !st.chars.length) continue;
+        ctx.font = "600 " + st.size + "px ui-monospace, 'Cascadia Mono', Consolas, monospace";
+        for (j = 0; j < st.chars.length; j++) {
+          var gc = st.chars[j];
+          var a = Math.min(1, gc.glow * st.dim);
+          if (gc.glow > 0.7)       ctx.fillStyle = "rgba(0, 245, 92,  " + a.toFixed(3) + ")";
+          else if (gc.glow > 0.32) ctx.fillStyle = "rgba(0, 210, 76,  " + a.toFixed(3) + ")";
+          else                     ctx.fillStyle = "rgba(0, 158, 60,  " + a.toFixed(3) + ")";
+          ctx.fillText(gc.ch, gc.cx - st.size * 0.3, gc.y);
+        }
+      }
+    }
+    requestAnimationFrame(tick);
+  }
+
+  setup();
+  window.addEventListener("resize", setup);
+  requestAnimationFrame(tick);
+})();
+
+/* ============================================================
+   Steam 游戏时长页：读取 data/steam_games.json（Actions 每日快照）
+   - 摘要行 + Top 12 时长榜（横向进度条按最大值归一）
+   - 快照为空/失败时显示引导文案，不打断整站
+   ============================================================ */
+(function () {
+  "use strict";
+
+  var SUM = document.getElementById("steamSum");
+  var BODY = document.getElementById("steamBody");
+  var EMPTY = document.getElementById("steamEmpty");
+  if (!SUM || !BODY || !EMPTY) return;
+
+  var TOP = 12;               // 页面展示前 12 款
+  var SNAPSHOT_URL = "data/steam_games.json";
+
+  function pad2(n) { return n < 10 ? "0" + n : String(n); }
+
+  function fmtStamp(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso || "");
+    return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) +
+      " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+  }
+
+  function fmtHours(h) {
+    return Number(h || 0).toLocaleString("zh-CN", { maximumFractionDigits: 1 });
+  }
+
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function render(payload) {
+    var games = (payload && Array.isArray(payload.games))
+      ? payload.games.filter(function (g) { return g && g.hours > 0; })
+      : [];
+    if (!games.length) {
+      SUM.textContent = "暂无时长记录（快照为空）";
+      EMPTY.textContent = "首次同步尚未完成：请在仓库配置 STEAM_API_KEY 后，"
+        + "手动运行 Actions 中的 “Refresh Steam hours snapshot”。";
+      return;
+    }
+    games.sort(function (a, b) { return (b.hours || 0) - (a.hours || 0); });
+
+    var when = fmtStamp(payload.generatedAt);
+    SUM.textContent = "共 " + (payload.totalGames != null ? payload.totalGames : games.length)
+      + " 款游戏 · 累计 " + fmtHours(payload.totalHours) + " 小时";
+
+    var maxH = games[0].hours || 1;
+    var rows = "";
+    var shown = games.slice(0, TOP);
+    for (var i = 0; i < shown.length; i++) {
+      var g = shown[i];
+      var pct = Math.max(2, Math.min(100, Math.round(g.hours / maxH * 100)));
+      rows +=
+        '<div class="steam-row">' +
+        '<span class="steam-rank">' + pad2(i + 1) + "</span>" +
+        '<span class="steam-main">' +
+        '<span class="steam-name" title="' + esc(g.name) + '">' + esc(g.name) + "</span>" +
+        '<span class="steam-bar"><i style="width:' + pct + '%"></i></span>' +
+        "</span>" +
+        '<span class="steam-h">' + fmtHours(g.hours) + '<i class="steam-u">h</i></span>' +
+        "</div>";
+    }
+    var foot = (payload.source ? "Steam Web API · " : "") +
+      (when ? "更新于 " + when : "") + " · GitHub Actions 每日同步";
+    EMPTY.hidden = true;
+    BODY.innerHTML = '<div class="steam-list">' + rows + "</div>" +
+      '<p class="steam-foot">数据：' + foot + "</p>";
+  }
+
+  fetch(SNAPSHOT_URL, { cache: "no-store" }).then(function (res) {
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.json();
+  }).then(render).catch(function () {
+    SUM.textContent = "Steam 数据暂时不可用";
+    EMPTY.textContent = "快照加载失败：请确认 data/steam_games.json 已存在，"
+      + "并手动运行 Actions 中的 “Refresh Steam hours snapshot”。";
+  });
 })();

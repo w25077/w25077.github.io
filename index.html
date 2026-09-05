@@ -5,13 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="李杨明（w25077）的个人主页 —— 技术策划 / 游戏开发者。Godot 4.x + C#，GitHub 贡献数据每日自动同步。">
   <meta name="author" content="李杨明">
-  <meta name="theme-color" content="#f7f4ed">
-  <meta name="color-scheme" content="light">
-  <title>李杨明 @w25077 · GitHub 活跃度</title>
+  <meta name="theme-color" content="#0a1126">
+  <meta name="color-scheme" content="dark">
+  <title>李杨明 @w25077 · 技术策划 / 游戏开发者</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+<!-- 背景装饰：左侧上浮的 0/1 数字流（终端绿，canvas 绘制，仅装饰） -->
+<canvas id="binaryRain" aria-hidden="true"></canvas>
 
 <main class="page">
 
@@ -21,20 +24,29 @@
   <section class="slide slide-first" id="s1">
     <div class="wrap">
 
-      <header class="masthead">
-        <div class="masthead-text">
-          <h1 class="display">关于我</h1>
-          <p class="lede">李杨明 <span class="lede-num">/ 25077</span></p>
+      <div class="hero">
+
+        <!-- 身份区：职业 / 技能 / 主页入口 -->
+        <div class="hero-id">
+          <p class="kicker">About Me</p>
+          <h1 class="display">关于我<span class="display-sub">李杨明 / 25077</span></h1>
+          <ul class="tags" aria-label="技能标签">
+            <li>游戏制作</li>
+            <li>技术策划</li>
+            <li>Unity</li>
+            <li>Godot</li>
+            <li>C#</li>
+            <li>Agent</li>
+          </ul>
           <div class="masthead-sites">
             <a class="profile" href="https://github.com/w25077" target="_blank" rel="noopener">Github@w25077</a>
             <a class="profile" href="https://gitee.com/w25077" target="_blank" rel="noopener">Gitee@w25077</a>
             <a class="profile" href="https://space.bilibili.com/51460458" target="_blank" rel="noopener">BiliBili@25077酱</a>
           </div>
         </div>
-      </header>
 
-      <!-- 贡献数据 · Game Boy 游戏机 -->
-      <div class="gb">
+        <!-- 贡献数据 · Game Boy 游戏机 -->
+        <div class="gb">
         <div class="gb-shell">
 
           <!-- 屏幕：左上角为次数，屏内为贡献热力图 -->
@@ -101,60 +113,146 @@
           </div>
         </div>
       </div>
+      </div>
+
+      <!-- 往下滑动提示（缓慢向下动画） -->
+      <div class="scroll-hint" aria-hidden="true">
+        <span class="scroll-hint-text">往下滑动</span>
+        <span class="scroll-hint-arrows">
+          <i class="scroll-hint-arrow"></i>
+          <i class="scroll-hint-arrow"></i>
+        </span>
+      </div>
 
     </div>
   </section>
 
   <!-- ============================================================
-       第 2 页：关于我（占位，后续填充）
+       第 2 页：关于我（简历节选）
        ============================================================ -->
   <section class="slide slide-pane" id="s2">
     <div class="wrap">
       <div class="pane-box">
         <p class="kicker">01 — 关于</p>
         <h2 class="pane-title">关于我</h2>
-        <p class="pane-text">自我介绍与技能展区（占位）—— 内容下一轮填充。</p>
-        <p class="pane-note">PAGE 01 · WIP</p>
+        <p class="pane-intro">
+          淮北师范大学 · 计算机科学与技术（本科 · 2023.09 – 2027.06）。<br>
+          求职方向：<em>技术策划</em><br>
+          懂代码、会引擎、善用 AI Agent，玩法设计与程序实现之间低成本对接。
+        </p>
+
+        <div class="pane-block">
+          <h3 class="pane-h">自我定位</h3>
+          <ul class="pane-list">
+            <li>自驱与热爱：个人项目连续高频迭代，累计 730+ 次 GitHub 贡献，钻研策划与玩法细节。</li>
+            <li>懂代码的策划：熟悉程序、游戏引擎与 Agent，与程序团队沟通成本低，设计更贴合实现。</li>
+            <li>擅长协作：需求拆解、进度规划与多人协作，坚持设计文档、规则文档与规范提交。</li>
+          </ul>
+        </div>
+
+        <div class="pane-block">
+          <h3 class="pane-h">荣誉</h3>
+          <ul class="pane-list">
+            <li>2025 安徽省机器人大赛（算法赛道）· 省级三等奖</li>
+            <li>第十五届安徽省双百大赛（游戏赛道）· 省级三等奖</li>
+            <li>2024 Unity（团结引擎）GameJam · 参赛并通关</li>
+          </ul>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- ============================================================
-       第 3 页：作品集（占位，后续填充）
+       第 3 页：作品集（简历节选）
        ============================================================ -->
   <section class="slide slide-pane" id="s3">
     <div class="wrap">
       <div class="pane-box">
         <p class="kicker">02 — 作品</p>
         <h2 class="pane-title">作品集</h2>
-        <p class="pane-text">游戏项目展位（占位）—— 内容下一轮填充。</p>
-        <p class="pane-note">PAGE 02 · WIP</p>
+
+        <div class="projs">
+          <div class="proj">
+            <div class="proj-top">
+              <span class="proj-idx">01</span>
+              <span class="proj-name">《文件未命名喵》</span>
+              <span class="proj-meta">卡牌 Roguelike · Godot 4.7 + C# · TapTap 已上架 · 9.6 分</span>
+            </div>
+            <p class="proj-desc">类《杀戮尖塔》构筑循环：CardEffect 效果体系、Buff/特性、意图状态机、数据驱动配置表与卡牌编辑器；支持多人局域网联机，全程 Conventional Commits 规范提交。</p>
+          </div>
+
+          <div class="proj">
+            <div class="proj-top">
+              <span class="proj-idx">02</span>
+              <span class="proj-name">《中文互联网梗全明星大乱斗》</span>
+              <span class="proj-meta">全栈卡牌平台 · Spring Boot + Nuxt 4 (Vue 3) + Godot 4.7 · 组长</span>
+            </div>
+            <p class="proj-desc">前后端分离三端架构：6 职业回合制卡牌战斗 + 抽卡/编队/关卡/商店系统；负责需求拆解、分工与前后端联调。</p>
+          </div>
+
+          <div class="proj">
+            <div class="proj-top">
+              <span class="proj-idx">03</span>
+              <span class="proj-name">《无尽进化》</span>
+              <span class="proj-meta">类吸血鬼幸存者 · Unity（团结引擎）GameJam · 两天完赛</span>
+            </div>
+            <p class="proj-desc">生物主题俯视角生存：波次强度递增、多武器攻击、能量掉落与"升级四选一"成长，原创背景与多结局。</p>
+          </div>
+
+          <div class="proj">
+            <div class="proj-top">
+              <span class="proj-idx">04</span>
+              <span class="proj-name">《Caos Fight》</span>
+              <span class="proj-meta">本地多人 2D 平台竞技 · 13 分制 2–4 人</span>
+            </div>
+            <p class="proj-desc">操作博弈 + 策略决策双层玩法：近战/远程/专属技能/换弹武器系统，武器六维属性与能量消耗数值平衡。</p>
+          </div>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- ============================================================
-       第 4 页：联系（占位，后续填充）
+       第 4 页：联系
        ============================================================ -->
   <section class="slide slide-pane" id="s4">
     <div class="wrap">
       <div class="pane-box">
         <p class="kicker">03 — 联系</p>
         <h2 class="pane-title">联系</h2>
-        <p class="pane-text">GitHub / Gitee / 邮箱入口（占位）—— 内容下一轮填充。</p>
-        <p class="pane-note">PAGE 03 · WIP</p>
+        <p class="pane-intro">欢迎与我交流 —— 邮件一般 24 小时内回复。</p>
+        <ul class="contact-list">
+          <li><span class="k">Email</span><a href="mailto:1575053786@qq.com" target="_blank" rel="noopener">1575053786@qq.com&nbsp;↗</a></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       第 5 页：Steam 游戏时长（快照每日自动同步）
+       ============================================================ -->
+  <section class="slide slide-pane" id="s5">
+    <div class="wrap">
+      <div class="pane-box">
+        <p class="kicker">04 — Steam</p>
+        <h2 class="pane-title">游戏时长</h2>
+        <p class="pane-intro" id="steamSum">数据每日自动同步（GitHub Actions）</p>
+        <div class="steam-body" id="steamBody">
+          <p class="steam-empty" id="steamEmpty">正在加载 Steam 时长数据…</p>
+        </div>
       </div>
     </div>
   </section>
 
 </main>
 
-<!-- 右侧页码导航（首页不计序号；01-03 对应第 2-4 屏） -->
+<!-- 右侧页码导航（首页不计序号；01-04 对应第 2-5 屏） -->
 <nav class="pager" aria-label="页面导航">
   <a href="#s1">首页</a>
   <a href="#s2">01</a>
   <a href="#s3">02</a>
   <a href="#s4">03</a>
+  <a href="#s5">04</a>
 </nav>
 
 <script src="script.js"></script>

@@ -1,0 +1,53 @@
+# ============================================================
+#  Refresh Steam hours snapshot
+#  每日抓取一次 Steam 游戏时长 → 提交 data/steam_games.json
+#  页面读取同仓库快照（同源加载，不依赖浏览器直连 Steam）。
+#  依赖仓库 Secret：STEAM_API_KEY
+#  （steamcommunity.com/dev/apikey 免费申请，任意域名文本即可）
+#  手动触发：仓库 Actions → Refresh Steam hours snapshot → Run workflow
+# ============================================================
+name: Refresh Steam hours snapshot
+
+on:
+  schedule:
+    - cron: "0 21 * * *"   # UTC 21:00 = 北京时间 05:00，每日一次
+  workflow_dispatch:        # 支持手动触发
+
+permissions:
+  contents: write           # 允许提交快照文件
+
+concurrency:
+  group: steam-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Fetch Steam playtime data
+        env:
+          STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
+        run: python .github/scripts/steam_snapshot.py
+
+      - name: Commit snapshot if updated
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -f data/.changed ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data/steam_games.json
+            git commit -m "chore: refresh steam hours snapshot"
+            git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:main
+            echo "snapshot committed and pushed"
+          else
+            echo "no snapshot change to commit"
+          fi
+          rm -f data/.changed
