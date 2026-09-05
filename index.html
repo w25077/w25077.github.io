@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="李杨明（w25077）的个人主页 —— 技术策划 / 游戏开发者。Godot 4.x + C#，GitHub 贡献数据每日自动同步。">
+  <meta name="author" content="李杨明">
+  <meta name="theme-color" content="#f7f4ed">
+  <meta name="color-scheme" content="light">
+  <title>李杨明 @w25077 · GitHub 活跃度</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<main class="page">
+
+  <!-- ============================================================
+       第 1 页：GitHub 活跃度（现有内容）
+       ============================================================ -->
+  <section class="slide slide-first" id="s1">
+    <div class="wrap">
+
+      <header class="masthead">
+        <div class="masthead-text">
+          <h1 class="display">关于我</h1>
+          <p class="lede">李杨明 <span class="lede-num">/ 25077</span></p>
+          <div class="masthead-sites">
+            <a class="profile" href="https://github.com/w25077" target="_blank" rel="noopener">Github@w25077</a>
+            <a class="profile" href="https://gitee.com/w25077" target="_blank" rel="noopener">Gitee@w25077</a>
+            <a class="profile" href="https://space.bilibili.com/51460458" target="_blank" rel="noopener">BiliBili@25077酱</a>
+          </div>
+        </div>
+      </header>
+
+      <!-- 贡献数据 · Game Boy 游戏机 -->
+      <div class="gb">
+        <div class="gb-shell">
+
+          <!-- 屏幕：左上角为次数，屏内为贡献热力图 -->
+          <div class="gb-screen">
+            <div class="gb-hud">
+              <span class="gb-hud-label">近一年贡献次数</span>
+              <strong class="gb-hud-num" id="statTotal">--</strong>
+              <span class="gb-score" id="gbScore"></span>
+            </div>
+
+            <div class="gh-state" id="ghState">
+          <!-- 加载骨架屏 -->
+          <div class="gh-loading" id="ghLoading" aria-hidden="true">
+            <div class="skeleton sk-line" style="width:38%"></div>
+            <div class="skeleton sk-line" style="width:62%"></div>
+            <div class="skeleton sk-block"></div>
+          </div>
+          <!-- 加载失败提示（多源均失败时显示） -->
+          <div class="gh-error" id="ghError" hidden>
+            <p>贡献数据暂时加载失败（快照或接口暂不可用）。</p>
+            <div class="gh-error-actions">
+              <button class="pill" type="button" id="ghRetry">重试</button>
+              <a class="pill" href="https://github.com/w25077" target="_blank" rel="noopener">在 GitHub 上查看&nbsp;↗</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- 图体：月标签 / 星期 / 方格（由 script.js 渲染） -->
+        <div class="gh-wrap" id="ghWrap" hidden>
+          <div class="gh-scroll">
+            <div class="gh-canvas">
+              <div class="gh-months" id="ghMonths"></div>
+              <div class="gh-area">
+                <div class="gh-days" id="ghDays"></div>
+                <div class="gh-cells" id="ghCells" role="img"></div>
+              </div>
+            </div>
+          </div>
+          <div class="gh-foot">
+            <p class="gh-footnote">数据：<span id="ghDataTime">正在获取…</span></p>
+            <div class="gh-legend" aria-hidden="true">
+              <span>少</span>
+              <i class="dot l0"></i><i class="dot l1"></i><i class="dot l2"></i><i class="dot l3"></i><i class="dot l4"></i>
+              <span>多</span>
+              <a class="gh-see" href="https://github.com/w25077" target="_blank" rel="noopener">查看完整贡献 ↗</a>
+            </div>
+          </div>
+        </div>
+          </div>
+
+          <!-- 机身控制区：十字键 / 铭牌 / A·B 键 -->
+          <div class="gb-controls" aria-hidden="true">
+            <div class="gb-dpad" aria-hidden="true">
+              <i class="gb-arm up"></i>
+              <i class="gb-arm down"></i>
+              <i class="gb-arm left"></i>
+              <i class="gb-arm right"></i>
+            </div>
+            <div class="gb-brand"><i class="gb-power"></i>25077<br>CONTRIBUTIONS</div>
+            <div class="gb-ab">
+              <span class="gb-btnwrap"><span class="gb-btn"></span><b>B</b></span>
+              <span class="gb-btnwrap"><span class="gb-btn"></span><b>A</b></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============================================================
+       第 2 页：关于我（占位，后续填充）
+       ============================================================ -->
+  <section class="slide slide-pane" id="s2">
+    <div class="wrap">
+      <div class="pane-box">
+        <p class="kicker">01 — 关于</p>
+        <h2 class="pane-title">关于我</h2>
+        <p class="pane-text">自我介绍与技能展区（占位）—— 内容下一轮填充。</p>
+        <p class="pane-note">PAGE 01 · WIP</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       第 3 页：作品集（占位，后续填充）
+       ============================================================ -->
+  <section class="slide slide-pane" id="s3">
+    <div class="wrap">
+      <div class="pane-box">
+        <p class="kicker">02 — 作品</p>
+        <h2 class="pane-title">作品集</h2>
+        <p class="pane-text">游戏项目展位（占位）—— 内容下一轮填充。</p>
+        <p class="pane-note">PAGE 02 · WIP</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       第 4 页：联系（占位，后续填充）
+       ============================================================ -->
+  <section class="slide slide-pane" id="s4">
+    <div class="wrap">
+      <div class="pane-box">
+        <p class="kicker">03 — 联系</p>
+        <h2 class="pane-title">联系</h2>
+        <p class="pane-text">GitHub / Gitee / 邮箱入口（占位）—— 内容下一轮填充。</p>
+        <p class="pane-note">PAGE 03 · WIP</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- 右侧页码导航（首页不计序号；01-03 对应第 2-4 屏） -->
+<nav class="pager" aria-label="页面导航">
+  <a href="#s1">首页</a>
+  <a href="#s2">01</a>
+  <a href="#s3">02</a>
+  <a href="#s4">03</a>
+</nav>
+
+<script src="script.js"></script>
+</body>
+</html>

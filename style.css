@@ -1,0 +1,650 @@
+/* ============================================================
+   李杨明 · 个人主页 —— 亮色杂志风（editorial light）
+   纸面底色 / 墨色文字 / 信号橙红点缀 / 衬线刊头
+   整页滚动吸附：每屏一个 .slide，滚轮一次翻一整页
+   ============================================================ */
+
+:root {
+  --paper: #f7f4ed;          /* 纸面 */
+  --sheet: #fffdf8;          /* 卡片纸 */
+  --ink: #1a1712;            /* 墨色主文字 */
+  --dim: #8f887a;            /* 次级灰褐 */
+  --line: #ddd5c4;           /* 发丝线 */
+  --line-strong: #b9b0a0;
+  --accent: #e6331f;         /* 信号橙红 */
+  --accent-deep: #b91c0a;
+
+  --serif: "Iowan Old Style", "Palatino Linotype", "Noto Serif SC",
+           "Source Han Serif SC", "Songti SC", SimSun, serif;
+  --sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+
+  /* 热力图：GitHub 官方亮色绿 + 适配纸面的空位色 */
+  --cell-0: #e6e0d2;
+  --cell-1: #9be9a8;
+  --cell-2: #40c463;
+  --cell-3: #30a14e;
+  --cell-4: #216e39;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* hidden 属性必须始终隐藏元素（作者样式不得覆盖，见 git 记录 b10bd1f） */
+[hidden] { display: none !important; }
+
+/* 根滚动容器：纵向强制吸附（滚一下 = 一整页）。
+   吸附动作速度由浏览器决定；丝滑缓动由 script.js 接管滚轮实现 */
+html {
+  scroll-behavior: smooth;
+  scroll-snap-type: y mandatory;
+}
+
+/* 内容超高时（script.js 检测到 .slide 高于视口）退回自由滚动，防止页底内容被吸附锁死 */
+html.free-scroll { scroll-snap-type: none; }
+html.free-scroll .slide { scroll-snap-stop: normal; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: var(--accent); color: #fff; }
+
+a { color: var(--ink); text-decoration: none; }
+a:hover { color: var(--accent); }
+
+/* ===== 整页吸附结构 ===== */
+.page { }
+
+.slide {
+  min-height: 100vh;
+  min-height: 100svh;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 相邻整页之间的分隔线（杂志感） */
+.slide + .slide { border-top: 1px solid var(--line); }
+
+/* 内容容器：流式宽度（不写死，适配任意屏幕）——小屏近乎占满，大屏对称留白 */
+.wrap {
+  width: min(92vw, 1280px);
+  margin: 0 auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(20px, 4vh, 56px) clamp(16px, 2vw, 32px) clamp(48px, 9vh, 96px);
+}
+
+/* 第 1 页：顶部紧凑，标题尽量靠近内容列左上 */
+.slide-first .wrap {
+  justify-content: flex-start;
+  padding-top: clamp(14px, 3vh, 36px);
+}
+.slide-pane .wrap  { justify-content: center; }
+
+/* ===== 刊头（masthead） ===== */
+.contrib { position: relative; }
+
+.masthead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 0 0 26px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.kicker {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+
+.kicker::before {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 2px;
+  background: var(--accent);
+  vertical-align: middle;
+  margin-right: 10px;
+}
+
+.display {
+  font-family: var(--serif);
+  font-weight: 900;
+  font-size: clamp(34px, 5vw, 60px);
+  line-height: 1.05;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+
+.lede {
+  margin-top: 10px;
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--dim);
+}
+
+.lede-num {
+  font-family: var(--mono);
+  font-weight: 400;
+  letter-spacing: 0.1em;
+}
+
+.lede::before {
+  content: "";
+  display: inline-block;
+  width: 22px;
+  height: 2px;
+  background: var(--accent);
+  vertical-align: middle;
+  margin-right: 12px;
+}
+
+.masthead-sites {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 26px;
+}
+
+.profile {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 13px;
+  padding-bottom: 3px;
+  border-bottom: 2px solid var(--accent);
+  color: var(--ink);
+  transition: color 0.2s;
+}
+.profile:hover { color: var(--accent); }
+
+/* ===== 贡献 Game Boy 游戏机 ===== */
+.gb {
+  margin-top: 30px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.gb-shell {
+  background: linear-gradient(160deg, #ddd8ce 0%, #c6c0b3 55%, #b2ac9e 100%);
+  border: 1px solid #99927f;
+  border-radius: 30px;
+  padding: 28px 26px 20px;
+  box-shadow:
+    0 18px 36px rgba(26, 23, 18, 0.18),
+    inset 0 2px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -12px 20px rgba(0, 0, 0, 0.10);
+}
+
+/* 屏幕（LCD 灰绿色调）：配色重映射为对比更分明的五档深绿阶梯，
+   避免整屏黄绿导致贡献表难以辨认 */
+.gb-screen {
+  --ink: #1f3510;
+  --dim: #3d5426;
+  --line: rgba(24, 44, 10, 0.35);
+  --accent: #7a2010;
+  --cell-0: #f3f6e9;   /* 空格：近白（配细网格线可辨） */
+  --cell-1: #86a345;
+  --cell-2: #5f8430;
+  --cell-3: #3a5a1a;
+  --cell-4: #142a07;   /* 最活跃：近墨绿 */
+
+  background:
+    /* 老屏质感：细扫描线 + 竖点阵（仅格子外的透明区域可见） */
+    repeating-linear-gradient(0deg, rgba(20, 42, 7, 0.055) 0px, rgba(20, 42, 7, 0.055) 1px, transparent 1px, transparent 3px),
+    repeating-linear-gradient(90deg, rgba(20, 42, 7, 0.045) 0 1px, transparent 1px 3px),
+    linear-gradient(160deg, #cedaa3, #bdcb91 70%, #b3c187);
+  border: 10px solid #5d5850;
+  border-radius: 12px;
+  padding: 10px 12px 8px;
+  box-shadow:
+    inset 0 0 0 2px rgba(0, 0, 0, 0.18),
+    inset 0 0 18px rgba(24, 44, 10, 0.30);
+}
+
+/* 老屏玻璃：高光 + 暗角覆盖层（不拦截点击） */
+.gb-screen { position: relative; }
+
+.gb-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(110% 90% at 32% 6%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 55%),
+    radial-gradient(140% 120% at 50% 55%, transparent 55%, rgba(15, 30, 6, 0.26));
+}
+
+/* 屏内格子：细网格线 + 圆形角，让空格与各档绿可区分 */
+.gb-screen .gh-cell { box-shadow: inset 0 0 0 1px rgba(20, 42, 7, 0.22); }
+.gb-screen .gh-cell.l1 { box-shadow: inset 0 0 0 1px rgba(20, 42, 7, 0.35); }
+
+/* 屏幕左上：近一年贡献次数 + 数值（同行紧跟） */
+.gb-hud {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 10px;
+  margin: 2px 0 10px;
+  font-family: var(--mono);
+}
+
+.gb-hud-label { font-size: 12px; font-weight: 700; letter-spacing: 0.03em; color: #23390f; white-space: nowrap; }
+.gb-hud-num { font-size: 19px; color: #14280a; font-variant-numeric: tabular-nums; line-height: 1; }
+.gb-score { margin-left: auto; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: #23390f; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ===== 贪吃蛇（贡献图格子即棋盘） ===== */
+.gb-screen .gh-cell.snake        { background: #ffd41f; }
+.gb-screen .gh-cell.snake.snake-head { background: #ffd41f; }
+.gb-screen .gh-cell.food         { background: radial-gradient(circle at 35% 30%, #e05d50, #a3231a 72%); border-radius: 2px; }
+
+/* A 键思考气泡 */
+.think-bubble {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  background: #fffef6;
+  border: 2px solid #23390f;
+  color: #14280a;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 3px 10px;
+  border-radius: 12px;
+  box-shadow: 0 3px 8px rgba(20, 42, 10, 0.25);
+  white-space: nowrap;
+  animation: bubble-in 0.16s ease;
+}
+
+.think-bubble::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  bottom: -7px;
+  width: 10px;
+  height: 10px;
+  background: #fffef6;
+  border-right: 2px solid #23390f;
+  border-bottom: 2px solid #23390f;
+  transform: rotate(45deg);
+}
+
+.think-bubble.out { opacity: 0; transition: opacity 0.2s ease; }
+
+@keyframes bubble-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.7); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* GAME OVER 提示 */
+.gameover {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+  pointer-events: none;
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: #142a07;
+  background: rgba(240, 244, 218, 0.88);
+  border: 2px solid #1f3510;
+  padding: 8px 16px;
+  border-radius: 8px;
+  animation: bubble-in 0.16s ease;
+}
+
+/* 骨架屏在 LCD 上的浅色版本 */
+.gb-screen .skeleton {
+  background: linear-gradient(90deg, #aab97c 25%, #c3cf9b 37%, #aab97c 63%);
+  background-size: 400% 100%;
+}
+
+/* 机身控制区：十字键 / 铭牌 / A·B 键 */
+.gb-controls {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+}
+
+/* 方向键：十字造型一体键（四个键臂既是造型也是按压区）
+   —— 无任何覆盖层/mask：按压时键臂自身表面从外缘向中心渐变变深，整块下沉 2px */
+.gb-dpad {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  cursor: pointer;
+  filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.30));
+  transition: transform 0.05s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 中心凹点 */
+.gb-dpad::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  border-radius: 3px;
+  background: radial-gradient(circle at 40% 35%, #3a3a42, #1c1c21 70%);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.7);
+  z-index: 1;
+}
+
+.gb-arm {
+  position: absolute;
+  background: linear-gradient(180deg, #4c4c56, #2a2a31 85%);
+  transition: background 0.05s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gb-arm.up    { top: 0;    left: 50%;        width: 26px; height: 36px; margin-left: -13px; border-radius: 7px 7px 3px 3px; }
+.gb-arm.down  { bottom: 0; left: 50%;        width: 26px; height: 36px; margin-left: -13px; border-radius: 3px 3px 7px 7px; }
+.gb-arm.left  { left: 0;   top: 50%;         width: 36px; height: 26px; margin-top: -13px;  border-radius: 7px 3px 3px 7px; }
+.gb-arm.right { right: 0;  top: 50%;         width: 36px; height: 26px; margin-top: -13px;  border-radius: 3px 7px 7px 3px; }
+
+/* 整块下沉（任一方向按下） */
+.gb-dpad:has(.gb-arm:active) { transform: translateY(2px); }
+
+/* 键臂自身表面变深：该臂外缘最深、向中心渐浅（无遮挡层） */
+.gb-arm.up:active    { background: linear-gradient(180deg, #16161c, #3a3a42 80%); }
+.gb-arm.down:active  { background: linear-gradient(180deg, #3a3a42 20%, #16161c); }
+.gb-arm.left:active  { background: linear-gradient(90deg, #16161c, #3a3a42 80%); }
+.gb-arm.right:active { background: linear-gradient(90deg, #3a3a42 20%, #16161c); }
+
+.gb-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  line-height: 1.8;
+  color: #6d6758;
+  text-align: center;
+}
+
+.gb-power {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ff7a6a, #d63b2a);
+  box-shadow: 0 0 6px rgba(214, 59, 42, 0.8);
+  margin-bottom: 2px;
+}
+
+.gb-ab { display: flex; align-items: flex-end; gap: 30px; padding-right: 4px; }
+
+.gb-btnwrap { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.gb-btnwrap b { font-family: var(--mono); font-size: 10px; color: #7a7465; }
+
+.gb-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #ef7fa8, #bf4f7e 55%, #9c3a64);
+  box-shadow: 0 4px 0 #7a2a4f, 0 6px 10px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: transform 0.05s ease, box-shadow 0.05s ease, filter 0.05s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 按下：键帽下沉、投影消失、变暗 */
+.gb-btn:active {
+  transform: translateY(3px) scale(0.97);
+  box-shadow: 0 1px 0 #6d2243, 0 0 5px rgba(0, 0, 0, 0.22);
+  filter: brightness(0.9);
+}
+
+/* 占位区：骨架屏 / 错误提示（数据就绪后由 JS 整体收起） */
+.gh-state { min-height: 148px; display: flex; flex-direction: column; justify-content: center; }
+
+.gh-loading { display: flex; flex-direction: column; gap: 14px; }
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #ece6d8 25%, #f4efe3 37%, #ece6d8 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s infinite;
+}
+
+.sk-line { height: 13px; }
+.sk-block { height: 96px; border-radius: 4px; }
+
+@keyframes shimmer {
+  from { background-position: 100% 0; }
+  to   { background-position: 0 0; }
+}
+
+.gh-error { text-align: center; color: var(--dim); font-size: 14px; }
+.gh-error-actions { margin-top: 18px; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+
+/* 按钮：墨色胶囊 */
+.pill {
+  display: inline-block;
+  padding: 8px 20px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.15s;
+}
+
+.pill:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+/* ===== 热力图本体 ===== */
+.gh-wrap { margin-top: 8px; }
+
+.gh-scroll { overflow-x: auto; }
+
+/* 图形画布宽度由 JS 常量决定（24 星期栏 + 53×11 + 52×3），移动端横向滚动 */
+.gh-canvas {
+  min-width: 763px;
+  padding-bottom: 2px;
+}
+
+.gh-months {
+  position: relative;
+  height: 16px;
+  margin-left: 24px;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.02em;
+}
+
+.gh-months span { position: absolute; top: 0; white-space: nowrap; }
+
+.gh-area { display: flex; }
+
+.gh-days {
+  width: 24px;
+  display: grid;
+  grid-template-rows: repeat(7, 11px);
+  row-gap: 3px;
+  font-size: 9.5px;
+  color: var(--dim);
+  padding-top: 1px;
+}
+
+.gh-days span { align-self: center; line-height: 1; }
+
+.gh-cells {
+  display: grid;
+  grid-template-columns: repeat(53, 11px);
+  grid-template-rows: repeat(7, 11px);
+  gap: 3px;
+}
+
+.gh-cell {
+  border-radius: 2px;
+  background: var(--cell-0);
+  transition: transform 0.08s;
+}
+
+.gh-cell:hover { transform: scale(1.3); }
+
+.gh-cell.l1 { background: var(--cell-1); }
+.gh-cell.l2 { background: var(--cell-2); }
+.gh-cell.l3 { background: var(--cell-3); }
+.gh-cell.l4 { background: var(--cell-4); }
+
+.gh-foot {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.gh-footnote { font-size: 11px; color: var(--dim); }
+
+.gh-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.gh-legend .dot { width: 10px; height: 10px; border-radius: 2px; background: var(--cell-0); }
+.gh-legend .dot.l1 { background: var(--cell-1); }
+.gh-legend .dot.l2 { background: var(--cell-2); }
+.gh-legend .dot.l3 { background: var(--cell-3); }
+.gh-legend .dot.l4 { background: var(--cell-4); }
+
+.gh-see { margin-left: 12px; font-size: 12px; font-weight: 600; color: var(--ink); }
+.gh-see:hover { color: var(--accent); text-decoration: underline; }
+
+/* ===== 占位整页（02 关于 / 03 作品 / 04 联系） ===== */
+.pane-box { max-width: 640px; }
+
+.pane-title {
+  font-family: var(--serif);
+  font-weight: 900;
+  font-size: clamp(44px, 7vw, 76px);
+  line-height: 1.05;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+
+.pane-text {
+  margin-top: 22px;
+  font-size: 15.5px;
+  color: var(--dim);
+  max-width: 520px;
+}
+
+.pane-note {
+  margin-top: 34px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: var(--line-strong);
+  text-transform: uppercase;
+}
+
+/* ===== 右侧页码导航 ===== */
+.pager {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  z-index: 10;
+}
+
+.pager a {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--line-strong);
+  padding: 4px 6px;
+  transition: color 0.2s;
+}
+
+.pager a:hover { color: var(--accent); }
+
+/* ===== 滚动条 ===== */
+::-webkit-scrollbar { height: 8px; width: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ===== 入场：第 1 页轻上浮淡入 ===== */
+.masthead-text { opacity: 0; animation: rise 0.7s ease forwards; }
+.gb { opacity: 0; animation: rise 0.7s ease 0.15s forwards; }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== 无障碍：减少动效 ===== */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .masthead-text, .gb, .skeleton { animation: none; opacity: 1; }
+}
+
+/* ===== 矮屏/窄屏：内容可能超出单屏，禁用吸附防止内容无法滚到底 ===== */
+@media (max-width: 560px), (max-height: 680px) {
+  html { scroll-snap-type: none; }
+  .slide { min-height: 0; scroll-snap-align: none; scroll-snap-stop: normal; }
+  .pager { display: none; }
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 640px) {
+  .wrap { padding-left: 18px; padding-right: 18px; }
+  .masthead { padding-bottom: 30px; }
+  .gb-shell { padding: 18px 12px 14px; border-radius: 22px; }
+  .gb-screen { padding: 8px 8px 6px; border-width: 7px; }
+  .gb-hud-num { font-size: 17px; }
+  .gb-dpad { width: 58px; height: 58px; }
+  .gb-arm.up, .gb-arm.down { width: 20px; height: 29px; margin-left: -10px; }
+  .gb-arm.left, .gb-arm.right { width: 29px; height: 20px; margin-top: -10px; }
+  .gb-dpad::before { width: 10px; height: 10px; }
+  .gb-btn { width: 30px; height: 30px; }
+  .gb-ab { gap: 20px; }
+  .gb-brand { letter-spacing: 0.2em; }
+}

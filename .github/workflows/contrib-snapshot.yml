@@ -1,0 +1,52 @@
+# ============================================================
+#  Refresh contribution snapshot
+#  每日抓取一次 GitHub 贡献数据 → 提交 data/contributions.json
+#  页面优先读取同仓库快照（同源加载，中国大陆可访问），
+#  不依赖浏览器直连第三方接口。
+#  手动触发：仓库 Actions → Refresh contribution snapshot → Run workflow
+# ============================================================
+name: Refresh contribution snapshot
+
+on:
+  schedule:
+    - cron: "0 22 * * *"   # UTC 22:00 = 北京时间 06:00，每日一次
+  workflow_dispatch:        # 支持手动触发
+
+permissions:
+  contents: write           # 允许提交快照文件
+
+concurrency:
+  group: contrib-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Fetch contribution data
+        env:
+          GH_TOKEN: ${{ github.token }}   # 供官方 GraphQL 源认证（逐日精确次数）
+        run: python .github/scripts/contrib_snapshot.py
+
+      - name: Commit snapshot if updated
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -f data/.changed ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data/contributions.json
+            git commit -m "chore: refresh contribution snapshot"
+            git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:main
+            echo "snapshot committed and pushed"
+          else
+            echo "no snapshot change to commit"
+          fi
+          rm -f data/.changed

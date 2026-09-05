@@ -1,0 +1,18 @@
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 日志与临时文件
+*.log
+*.tmp
+
+# Python（贡献快照脚本）
+__pycache__/
+*.pyc
+
+# Actions 生成的变更标记（contributions.json 本身需提交，勿忽略）
+data/.changed
+
+# DSH 会话回滚记录（勿入库）
+.dsh/
