@@ -314,6 +314,9 @@
   if (!slides.length) return;
   if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
+  // 标记平滑翻页已接管：启用内容页的滚动入场动画（见 style.css html.js-anim）
+  document.documentElement.classList.add("js-anim");
+
   var DURATION = 1000;   // 单次翻页动画时长（ms）：慢速缓动，手感顺滑
   var TRIGGER = 60;      // 触发翻页的累积滚轮量（px）
   var MIN_GAP = 200;     // 连续翻页最小间隔（ms）：到达后可打断动画翻下一页
@@ -399,6 +402,7 @@
   var hintEl = document.getElementById("scrollHint");
   function syncMarker(idx) {
     updateActive(idx);
+    if (slides[idx]) slides[idx].classList.add("in-view");   // 内容页滚动入场（一次性）
     if (backBtn) backBtn.classList.toggle("show", idx !== 0);
     // 猫点击回顶后（__catReturn）不显示"往下滑动"提示，直到下次手动翻页
     if (hintEl) hintEl.classList.toggle("show", idx === 0 && !window.__catReturn);
