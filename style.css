@@ -987,8 +987,7 @@ a:hover { color: var(--accent); }
 .pager {
   position: fixed;
   left: 20px;
-  top: 50%;
-  transform: translateY(-50%);
+  bottom: 24px;
   display: flex;
   flex-direction: column;
   z-index: 10;
