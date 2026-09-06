@@ -213,6 +213,9 @@
     var stats = computeStats(map, win);
     renderGraph(map, win, stats);
     showMetrics(stats);
+    // 「关于我」页的"近一年累计 XXX 次"与 Game Boy HUD 同源实时同步
+    var yoy = document.getElementById("contribYoY");
+    if (yoy) yoy.textContent = stats.total.toLocaleString("zh-CN");
     setDataNote(noteText || "已就绪");
     $("ghLoading").hidden = true;
     $("ghError").hidden = true;
