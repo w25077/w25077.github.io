@@ -829,6 +829,27 @@ html.js-anim .slide-pane.in-view .pane-box {
   color: #9da9c9;
 }
 
+/* 描述内的高亮外链（在线数据分析平台）：药丸底色 + 强调色加粗，悬停反白填充 */
+.desc-hl {
+  padding: 1px 7px 2px;
+  margin: 0 3px;
+  border-radius: 7px;
+  font-weight: 800;
+  color: var(--accent);
+  background: rgba(125, 140, 255, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(125, 140, 255, 0.42);
+  white-space: nowrap;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition: color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+.desc-hl:hover {
+  color: #fff;
+  background: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent), 0 3px 14px rgba(125, 140, 255, 0.4);
+}
+
 /* 联系列表：左标签右链接 */
 .contact-list {
   margin-top: 24px;
