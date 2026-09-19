@@ -893,6 +893,260 @@ html.js-anim .slide-pane.in-view .pane-box {
   .contact-list li { flex-direction: column; align-items: flex-start; gap: 4px; }
 }
 
+/* ===== 作品集右栏：视频展示区（B 站播放器，点击封面才加载） ===== */
+/* 双栏舞台：左列固定 640px 保持原文字版式，右列吃掉剩余宽度；
+   max-width 收窄整页 —— 1280px 时左列会压到左下角的翻页导航
+   .pager（fixed left:20px，宽约 98px），故按视口留出余量 */
+.pane-vwrap {
+  display: grid;
+  grid-template-columns: minmax(0, 640px) minmax(0, 1fr);
+  gap: clamp(24px, 2.8vw, 52px);
+  align-items: start;
+  width: 100%;
+  max-width: min(1280px, 78vw);
+  margin: 0 auto;
+}
+
+/* 左栏在栅格里已被限定到 640px，取消 pane-box 自身上限 */
+.pane-vwrap .pane-box { max-width: none; }
+
+.pane-split { min-width: 0; }
+
+/* 右栏入场：与左栏 .pane-box 共用同一容器状态（同属 .pane-vwrap 舞台），
+   只比左栏晚 0.12s。入场动画模块（html.js-anim）未运行时两边都不隐藏，
+   内容始终可见；transform 写在子元素上，避免与 .vplay 自身叠加 */
+html.js-anim .slide-pane .pane-vwrap .pane-box { transform: translateY(18px); }
+html.js-anim .slide-pane.in-view .pane-vwrap .pane-box { transform: none; }
+html.js-anim .slide-pane .pane-vwrap .vplay { opacity: 0; }
+html.js-anim .slide-pane.in-view .pane-vwrap .vplay {
+  opacity: 1;
+  transition: opacity 0.6s ease 0.12s;
+}
+
+.vplay {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(20, 28, 58, 0.72), rgba(9, 14, 32, 0.86));
+  box-shadow: 0 20px 48px rgba(3, 6, 20, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+/* 顶栏：终端窗口式三色点 + 文件名 + 来源角标 */
+.vplay-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(6, 10, 26, 0.62);
+}
+
+.vplay-dots { display: flex; gap: 5px; flex: 0 0 auto; }
+
+.vplay-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+
+.vplay-dots i:first-child { background: rgba(255, 122, 122, 0.66); }
+.vplay-dots i:nth-child(2) { background: rgba(255, 208, 122, 0.66); }
+.vplay-dots i:last-child  { background: rgba(122, 255, 163, 0.60); }
+
+.vplay-bar-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+}
+
+.vplay-badge {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border: 1px solid rgba(125, 140, 255, 0.34);
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--accent);
+}
+
+.vplay-badge:empty { display: none; }
+
+/* 屏幕：16:9，封面上叠播放按钮；iframe 注入后铺满同一块区域 */
+.vplay-screen {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: radial-gradient(120% 100% at 50% 0%, #16204a 0%, #080d1f 78%);
+}
+
+.vplay-screen iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.vplay-cover {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* 封面底纹：斜向扫描线 + 中央柔光（纯 CSS，无需图片素材） */
+.vplay-poster {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(60% 60% at 50% 44%, rgba(125, 140, 255, 0.26), transparent 70%),
+    repeating-linear-gradient(122deg, rgba(125, 140, 255, 0.24) 0 10px, rgba(125, 140, 255, 0.07) 10px 20px);
+  opacity: 0.9;
+}
+
+.vplay-shade {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(78% 78% at 50% 50%, transparent 34%, rgba(4, 7, 20, 0.72) 100%);
+}
+
+/* 播放按钮：圆环 + 三角，悬停放大、发光 */
+.vplay-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(52px, 16%, 68px);
+  aspect-ratio: 1;
+  margin: calc(clamp(52px, 16%, 68px) / -2) 0 0 calc(clamp(52px, 16%, 68px) / -2);
+  border: 2px solid rgba(255, 255, 255, 0.82);
+  border-radius: 50%;
+  background: rgba(91, 108, 245, 0.46);
+  box-shadow: 0 10px 30px rgba(91, 108, 245, 0.46);
+  transition: transform 0.22s ease, background-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.vplay-play i {
+  width: 0;
+  height: 0;
+  margin-left: 4px;
+  border-left: 13px solid #fff;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+}
+
+.vplay-cover:hover .vplay-play,
+.vplay-cover:focus-visible .vplay-play {
+  transform: scale(1.08);
+  background: var(--accent);
+  box-shadow: 0 12px 36px rgba(125, 140, 255, 0.6);
+}
+
+.vplay-cover:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+
+/* 播放中：封面只做视觉隐藏（保留在 DOM 里），让"点外围停止"的
+   委托处理器仍能把点击识别为"播放器内部"，不会误杀刚插入的 iframe。
+   初始隐藏由全局 [hidden] !important 规则负责，这里只需覆盖播放中这一态 */
+.vplay[data-vplay-state="playing"] .vplay-cover {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+/* 封面右下角文案 */
+.vplay-capable {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: rgba(231, 236, 249, 0.82);
+  text-shadow: 0 1px 8px rgba(4, 7, 20, 0.9);
+}
+
+/* 占位/失败提示（未填链接或链接无法识别） */
+.vplay-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.9;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+}
+
+.vplay-hint b {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--ink);
+}
+
+.vplay-hint b::before {
+  content: "▍";
+  margin-right: 6px;
+  color: var(--accent);
+}
+
+/* 失败态：把提示语染成暖色，与"待补充"中性态区分 */
+.vplay[data-vplay-state="error"] .vplay-hint { color: #e6b98a; }
+.vplay[data-vplay-state="error"] .vplay-hint b { color: #ffd0a0; }
+
+.vplay-foot {
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.vplay-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.vplay-blurb {
+  margin-top: 3px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--dim);
+}
+
+.vplay-title:empty, .vplay-blurb:empty { display: none; }
+
+/* 中窄屏：先看视频再看列表（视频在上，作品列表在下） */
+@media (max-width: 1200px) {
+  .pane-vwrap {
+    grid-template-columns: 1fr;
+    max-width: 640px;
+  }
+  .vplay { order: -1; }
+}
+
 /* ===== Steam 游戏时长墙（封面平铺 + 时长角标） ===== */
 /* 普通文档流：封面墙随内容自然撑高；内容超过一屏时全站自动
    退出吸附（JS 检测到超高 slide → html.free-scroll），

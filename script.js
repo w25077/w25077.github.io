@@ -1181,3 +1181,161 @@
     }
   });
 })();
+
+/* ============================================================
+   作品集右栏 · 视频展示区
+   懒加载策略：页面里只放封面（纯 CSS 绘制），点击后按 data-vplay-src
+   注入 B 站 iframe —— 首屏不拉播放器脚本，不拖慢热力图与贡献数据。
+   可识别三种写法（大小写不敏感）：
+     https://www.bilibili.com/video/BV1xx411c7mD   （可带 ?p=1 等参数）
+     //player.bilibili.com/player.html?bvid=BV1xx411c7mD&page=1
+     BV1xx411c7mD
+   未填 / 无法识别 → 原地显示提示，不加载任何外部资源。
+   ============================================================ */
+(function () {
+  "use strict";
+
+  var shells = document.querySelectorAll("[data-vplay]");
+  if (!shells.length) return;
+
+  var HINT_PENDING = ["视频待补充", "在 index.html 的 data-vplay-src 填入 B 站视频地址即可播放"];
+  var HINT_BAD = ["视频链接无法识别", "支持 BV 号、视频页地址或 B 站播放器地址"];
+
+  // B 站官方播放器参数：
+  //  muted=1 + autoplay=1 —— 浏览器只放行静音自动播放，点封面必定开播
+  //  （有声自动播放会被 Chrome 拦截，会退化成"还要再点一次"）
+  //  想听声音在播放器里点一下取消静音即可；同时关掉小窗标题栏
+  var PLAYER_OPTS = "autoplay=1&danmaku=0&high_quality=1&as_wide=1&muted=1" +
+                    "&hideCoverInfo=1&hideDanmakuButton=1";
+
+  var BV_RE = /^BV[0-9A-Za-z]{10}$/;
+  var PAGE_RE = /[?&]p(?:age)?=(\d+)/i;
+
+  function parseSource(raw) {
+    var s = String(raw || "").trim();
+    if (!s) return null;
+
+    var m = s.match(/BV[0-9A-Za-z]{10}/);
+    if (m) {
+      var page = s.match(PAGE_RE);
+      return { bvid: m[0], page: page ? page[1] : "1" };
+    }
+
+    // 仅给了 av 号（未给 BV）时用 aid 参数
+    var av = s.match(/\bav(\d+)/i);
+    if (av) {
+      var avPage = s.match(PAGE_RE);
+      return { aid: av[1], page: avPage ? avPage[1] : "1" };
+    }
+
+    return null;
+  }
+
+  function playerUrl(id) {
+    var url;
+    if (id.bvid) {
+      url = "//player.bilibili.com/player.html?bvid=" + id.bvid;
+    } else {
+      url = "//player.bilibili.com/player.html?aid=" + id.aid;
+    }
+    return url + "&page=" + id.page + "&" + PLAYER_OPTS;
+  }
+
+  function setHint(box, lines) {
+    box.hidden = false;
+    box.innerHTML = "";
+    var b = document.createElement("b");
+    b.textContent = lines[0];
+    box.appendChild(b);
+    box.appendChild(document.createTextNode(lines[1]));
+  }
+
+  function setup(shell) {
+    // shells 选的就是 .vplay 本体（[data-vplay]），不需要再往里找一层
+    var cover = shell.querySelector(".vplay-cover");
+    var screen = shell.querySelector(".vplay-screen");
+    var hint = shell.querySelector(".vplay-hint");
+    if (!cover || !screen || !hint) return;
+
+    // 停止播放：移除 iframe 才会真的停声（重复调用安全）
+    function stop() {
+      if (shell.getAttribute("data-vplay-state") !== "playing") return;
+      var frame = screen.querySelector("iframe");
+      if (frame) screen.removeChild(frame);
+      shell.setAttribute("data-vplay-state", "ready");
+      cover.setAttribute("aria-expanded", "false");
+      cover.removeAttribute("aria-hidden");
+    }
+
+    // 重新初始化（改过 data-vplay-src 后重跑脚本）时，先彻底停掉上一次播放
+    stop();
+    shell.__vplayStop = stop;
+
+    var id = parseSource(shell.getAttribute("data-vplay-src"));
+
+    if (!id) {
+      // 无链接 → 占位；填了但认不出 → 报错提示。两种情况都不加载任何外部资源
+      var bad = !!(shell.getAttribute("data-vplay-src") || "").trim();
+      shell.setAttribute("data-vplay-state", bad ? "error" : "pending");
+      cover.hidden = true;
+      cover.setAttribute("aria-expanded", "false");
+      setHint(hint, bad ? HINT_BAD : HINT_PENDING);
+      return;
+    }
+
+    var label = shell.getAttribute("data-vplay-title") || "视频展示";
+    shell.setAttribute("data-vplay-state", "ready");
+    hint.hidden = true;
+    cover.hidden = false;
+    cover.setAttribute("aria-label", "播放视频：" + label);
+
+    var cap = cover.querySelector(".vplay-capable");
+    if (cap) cap.textContent = shell.getAttribute("data-vplay-capable") || "";
+
+    var titleEl = shell.querySelector(".vplay-title");
+    var barTitle = shell.querySelector(".vplay-bar-title");
+    var badge = shell.querySelector(".vplay-badge");
+    if (titleEl) titleEl.textContent = label;
+    if (barTitle) barTitle.textContent = label;
+    if (badge) badge.textContent = shell.getAttribute("data-vplay-meta") || "";
+
+    var blurbEl = shell.querySelector(".vplay-blurb");
+    if (blurbEl) blurbEl.textContent = shell.getAttribute("data-vplay-blurb") || "";
+
+    cover.addEventListener("click", function () {
+      if (shell.getAttribute("data-vplay-state") === "playing") return;
+      var frame = document.createElement("iframe");
+      frame.className = "vplay-frame";
+      frame.src = playerUrl(id);
+      frame.title = label;
+      frame.setAttribute("allow", "autoplay; fullscreen; encrypted-media; picture-in-picture");
+      frame.setAttribute("allowfullscreen", "");
+      frame.setAttribute("scrolling", "no");
+      frame.setAttribute("frameborder", "0");
+      screen.appendChild(frame);                 // iframe 盖住封面 → 直接开播
+      // 注意：播放中封面只做视觉隐藏（CSS），不能真置 hidden——
+      // 否则事件冒泡到下方"点外围停止"的委托处理器时，e.target（封面）
+      // 已不在 shell 内，会被判定为"点了外围"，刚插入的 iframe 立刻被移除
+      shell.setAttribute("data-vplay-state", "playing");
+      cover.setAttribute("aria-expanded", "true");
+      cover.setAttribute("aria-hidden", "true");
+    });
+
+    window.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" || e.keyCode === 27) stop();
+    });
+  }
+
+  Array.prototype.forEach.call(shells, setup);
+
+  // 事件委托：点播放器之外的位置（切换页面/点空白）顺手停掉播放，防后台出声
+  document.addEventListener("click", function (e) {
+    Array.prototype.forEach.call(shells, function (shell) {
+      if (!shell.__vplayStop) return;
+      if (shell.contains(e.target) &&
+          shell.getAttribute("data-vplay-state") === "playing") return;
+      shell.__vplayStop();
+    });
+  });
+})();
+
