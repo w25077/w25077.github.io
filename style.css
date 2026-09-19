@@ -894,16 +894,18 @@ html.js-anim .slide-pane.in-view .pane-box {
 }
 
 /* ===== 作品集右栏：视频展示区（B 站播放器，点击封面才加载） ===== */
-/* 双栏舞台：左列固定 640px 保持原文字版式，右列吃掉剩余宽度；
-   max-width 收窄整页 —— 1280px 时左列会压到左下角的翻页导航
-   .pager（fixed left:20px，宽约 98px），故按视口留出余量 */
+/* 双栏舞台：左列固定 640px 保持原文字版式，右列吃掉剩余宽度。
+   右缘锚定视口 —— max-width 用 (100vw - 240px)：
+     · 100vw - 240px 与 80vw 取小，越宽的视口越贴右边（不再白留一大条）
+     · 240px = 左下角翻页导航 .pager（left:20px + 宽约 98px）+ 两侧缓冲，
+       减去它可保证视频卡右缘始终离屏边约 120px，任何视口都不会压住导航 */
 .pane-vwrap {
   display: grid;
   grid-template-columns: minmax(0, 640px) minmax(0, 1fr);
   gap: clamp(24px, 2.8vw, 52px);
   align-items: start;
   width: 100%;
-  max-width: min(1280px, 78vw);
+  max-width: min(80vw, calc(100vw - 240px), 1520px);
   margin: 0 auto;
 }
 
