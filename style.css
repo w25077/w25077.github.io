@@ -15,6 +15,12 @@
   --accent: #7d8cff;         /* 点缀：蓝紫 */
   --accent-deep: #5b6cf5;
 
+  /* 提醒红：作品集里的外部入口（在线数据分析平台）。
+     站点主色是蓝紫，红色只用在需要"一眼看到"的入口上，对比更强。
+     红字在药丸底色上对比度 4.99，悬停填色后白字 4.83，均达 WCAG AA */
+  --hot: #ff4d4d;            /* 鲜红：药丸文字 / 描边 */
+  --hot-deep: #e01b24;       /* 深红：悬停时的整块填充色（白字仍达 AA） */
+
   --serif: "Iowan Old Style", "Palatino Linotype", "Noto Serif SC",
            "Source Han Serif SC", "Songti SC", SimSun, serif;
   --sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
@@ -824,25 +830,36 @@ html.js-anim .slide-pane.in-view .pane-box {
   color: #9da9c9;
 }
 
-/* 描述内的高亮外链（在线数据分析平台）：药丸底色 + 强调色加粗，悬停反白填充 */
+/* 描述内的高亮外链（在线数据分析平台）：鲜红药丸 + 红色描边与柔光。
+   全站主色是蓝紫，这里刻意用红色拉开对比，让这个外部入口一眼就能看到；
+   悬停整块填深红、文字转白，像按钮被按亮 */
 .desc-hl {
   padding: 1px 7px 2px;
   margin: 0 3px;
   border-radius: 7px;
   font-weight: 800;
-  color: var(--accent);
-  background: rgba(125, 140, 255, 0.16);
-  box-shadow: inset 0 0 0 1px rgba(125, 140, 255, 0.42);
+  color: var(--hot);
+  background: rgba(255, 77, 77, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 77, 77, 0.60),
+              0 0 14px rgba(255, 45, 45, 0.28);
   white-space: nowrap;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
   transition: color 0.2s, background 0.2s, box-shadow 0.2s;
+  animation: hotPulse 2.6s ease-in-out infinite;   /* 轻微呼吸光，持续"亮"着 */
+}
+
+/* 呼吸光只动 box-shadow（颜色/底色不变），悬停时停掉让位给悬停态辉光 */
+@keyframes hotPulse {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(255, 77, 77, 0.60), 0 0 12px rgba(255, 45, 45, 0.20); }
+  50%      { box-shadow: inset 0 0 0 1px rgba(255, 77, 77, 0.88), 0 0 22px rgba(255, 45, 45, 0.46); }
 }
 
 .desc-hl:hover {
   color: #fff;
-  background: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent), 0 3px 14px rgba(125, 140, 255, 0.4);
+  background: var(--hot-deep);
+  box-shadow: inset 0 0 0 1px var(--hot), 0 3px 16px rgba(255, 45, 45, 0.5);
+  animation: none;   /* 动画声明优先级高于普通声明，这里必须显式关掉才能用上面这行辉光 */
 }
 
 /* ===== 作品集舞台：标题 + 三列（每列 = 一个视频窗口 + 该项目的说明） ===== */
@@ -1577,6 +1594,7 @@ html.js-anim .slide-pane.in-view .pane-vwrap .vplay {
   #backToTop::after { animation: none; opacity: 1; }
   .gb::before { animation: none; }
   .slide-first .kicker::after { animation: none; }
+  .desc-hl { animation: none; }   /* 入口按钮的呼吸光也关掉（样式本身保留） */
 }
 
 /* ===== 矮屏/窄屏：内容可能超出单屏，禁用吸附防止内容无法滚到底 ===== */
