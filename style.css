@@ -778,13 +778,8 @@ html.js-anim .slide-pane.in-view .pane-box {
   background: var(--accent);
 }
 
-/* 作品条目：序号 + 名称 + 技术标注 + 一句话简介 */
-.projs {
-  margin-top: 18px;
-  display: flex;
-  flex-direction: column;
-}
-
+/* 作品条目：序号 + 名称 + 技术标注 + 一句话简介
+   （现在每一条都挂在 .vcell 里、随视频同列显示，不再有独立的纵向列表容器） */
 .proj {
   padding: 13px 0;
   border-top: 1px solid var(--line);
@@ -848,6 +843,69 @@ html.js-anim .slide-pane.in-view .pane-box {
   color: #fff;
   background: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent), 0 3px 14px rgba(125, 140, 255, 0.4);
+}
+
+/* ===== 作品集舞台：标题 + 三列（每列 = 一个视频窗口 + 该项目的说明） ===== */
+/* 纵向排列，整页随窗口尺寸自适应 */
+.vstage {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 2.2vh, 26px);
+  width: 100%;
+  /* 与旧双栏舞台同样的右缘留白：避开右下角 .pager 翻页导航 */
+  max-width: min(80vw, calc(100vw - 240px), 1240px);
+  margin: 0 auto;
+}
+
+.vstage-head { max-width: 640px; }
+
+/* 三列等宽：每列是"视频窗口 + 项目说明"，说明文字因此天然与视频左右对齐。
+   说明不再另起三行叠在下面（原来 = 视频一排 + 文字三行），
+   纵向空间反而更宽松，所以封面可以保持完整 16:9，任何视口都不裁切 */
+.vgrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(12px, 1.5vw, 20px);
+  align-items: start;
+}
+
+.vgrid .vplay-screen { aspect-ratio: 16 / 9; }
+
+/* 单列：视频在上、说明在下（两者左边缘同一条线） */
+.vcell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* 说明文字：去掉原"三行列表"的发丝分隔线，改用与视频卡片之间的留白分隔 */
+.vcell .proj {
+  border-top: 0;
+  padding: 14px 0 0;
+}
+
+/* 技术标注单独一行：窄列里比挤在项目名后面更好读 */
+.vcell .proj-meta { display: block; width: 100%; }
+
+/* 说明用满列宽（原来的 620px 限宽是整页横向版式下的规则） */
+.vcell .proj-desc { max-width: none; }
+
+/* 舞台整体入场：与其它内容页的淡入上移一致（JS 未加载时不生效） */
+html.js-anim .slide-pane .vstage {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+html.js-anim .slide-pane.in-view .vstage {
+  opacity: 1;
+  transform: none;
+}
+
+/* 窄屏：三列改为竖排（每列内部结构不变：视频在上、说明在下）。
+   此时整页本来就是自由滚动，可一路滚完三个作品 */
+@media (max-width: 880px) {
+  .vgrid { grid-template-columns: 1fr; max-width: 560px; margin: 0 auto; }
 }
 
 /* 联系列表：左标签右链接 */
@@ -1019,6 +1077,20 @@ html.js-anim .slide-pane.in-view .pane-vwrap .vplay {
     radial-gradient(60% 60% at 50% 44%, rgba(125, 140, 255, 0.26), transparent 70%),
     repeating-linear-gradient(122deg, rgba(125, 140, 255, 0.24) 0 10px, rgba(125, 140, 255, 0.07) 10px 20px);
   opacity: 0.9;
+}
+
+/* 封面图：B 站视频封面（本地 image/cover-0N.jpg），盖在扫描线底纹之上、
+   暗角与播放按钮之下。object-fit:cover 让任意原图比例都填满不拉伸。
+   HTML 里挂了 onerror="this.remove()"：图片缺失时自己退场，
+   露出上面的底纹，不会出现裂图 */
+.vplay-cover-img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 
 .vplay-shade {

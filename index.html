@@ -128,100 +128,152 @@
   </section>
 
   <!-- ============================================================
-       第 2 页：作品集（简历节选）
+       第 2 页：作品集（三个演示视频 + 项目说明）
        ============================================================ -->
   <section class="slide slide-pane" id="s2">
     <div class="wrap">
-      <!-- 双栏舞台：左 = 作品列表（保留原 640px 栏宽）｜右 = 视频展示区 -->
-      <div class="pane-vwrap">
+      <!-- 纵向舞台：标题 + 三列（每列 = 一个视频窗口 + 该项目说明，文字与视频同列左对齐） -->
+      <div class="vstage">
 
-        <div class="pane-split">
-          <div class="pane-box">
-            <p class="kicker">01 — PORTFOLIO</p>
-            <h2 class="pane-title">作品集</h2>
-
-            <div class="projs">
-              <div class="proj">
-                <div class="proj-top">
-                  <span class="proj-idx">01</span>
-                  <span class="proj-name">《文件未命名喵》</span>
-                  <span class="proj-meta">卡牌 Roguelike · Godot 4.7 + C#</span>
-                </div>
-                <p class="proj-desc">卡牌肉鸽游戏，拥有卡牌效果体系、Buff/特性、敌人意图状态机、数据配置卡牌编辑器和<a class="desc-hl" href="http://121.199.71.142:8787/index.html" target="_blank" rel="noopener">在线数据分析平台&nbsp;↗</a>。</p>
-              </div>
-
-              <div class="proj">
-                <div class="proj-top">
-                  <span class="proj-idx">02</span>
-                  <span class="proj-name">《中文互联网梗全明星大乱斗》</span>
-                  <span class="proj-meta">全栈卡牌平台 · Spring Boot + Nuxt 4 (Vue 3) + Godot 4.7 · 组长</span>
-                </div>
-                <p class="proj-desc">前后端分离三端架构：6 职业回合制卡牌战斗 + 抽卡/编队/关卡/商店系统；负责需求拆解、分工与前后端联调。</p>
-              </div>
-
-              <div class="proj">
-                <div class="proj-top">
-                  <span class="proj-idx">03</span>
-                  <span class="proj-name">《无尽进化》</span>
-                  <span class="proj-meta">类吸血鬼幸存者 · Unity（团结引擎）GameJam · 两天完赛</span>
-                </div>
-                <p class="proj-desc">生物主题俯视角生存：波次强度递增、多武器攻击、能量掉落与"升级四选一"成长，原创背景与多结局。</p>
-              </div>
-
-              <div class="proj">
-                <div class="proj-top">
-                  <span class="proj-idx">04</span>
-                  <span class="proj-name">《Caos Fight》</span>
-                  <span class="proj-meta">本地多人 2D 平台竞技 · 13 分制 2–4 人</span>
-                </div>
-                <p class="proj-desc">操作博弈 + 策略决策双层玩法：近战/远程/专属技能/换弹武器系统，武器六维属性与能量消耗数值平衡。</p>
-              </div>
-            </div>
-          </div>
+        <div class="vstage-head">
+          <p class="kicker">01 — PORTFOLIO</p>
+          <h2 class="pane-title">作品集</h2>
         </div>
 
         <!-- ============================================================
-             视频展示区（作品集右栏）· 已填入 B 站视频 BV1dXeQ6tELV
-             ▸ 换链接：改下方 data-vplay-src 即可，以下三种写法都能识别：
+             三个视频窗口 · 每列一个项目：上面是视频、下面是该项目的说明
+             ▸ 未点击时：显示该视频的 B 站封面（本地 image/cover-0N.jpg），
+               顶栏是视频名、封面右下角是"点击封面播放"；点了才注入 B 站
+               播放器（首屏不加载任何播放器，不拖慢页面）。
+             ▸ 换视频：改对应 .vplay 上的 data-vplay-src，三种写法都能识别：
                  https://www.bilibili.com/video/BV1xx411c7mD
                  //player.bilibili.com/player.html?bvid=BV1xx411c7mD&page=1
                  BV1xx411c7mD
-             ▸ 清空 data-vplay-src 会退回「视频待补充」占位；填了但认不出
+               多 P 视频写成 .../video/BV1xx411c7mD?p=2 即定位到第 2 P
+             ▸ 换封面：直接替换 image/cover-0N.jpg（16:9 最佳）。文件缺失时
+               图片会自行退场，露出 CSS 扫描线底纹，不会出现裂图。
+             ▸ 清空某个 data-vplay-src 会退回「视频待补充」占位；填了但认不出
                则显示「视频链接无法识别」。两种情况都不加载外部资源。
-             ▸ 点击封面才注入 iframe（首屏不加载 B 站播放器，不拖慢页面）；
-               点播放器外围或按 Esc 停止播放。
-             ▸ 可选：data-vplay-title 标题（同时用作顶栏文字与 aria-label）/
-               data-vplay-blurb 副标题（留空则整行不显示）/
-               data-vplay-meta 角标文案。
+             ▸ 播放中：点另一个视频、点播放器外围或按 Esc 都会停播，不会串台。
+             ▸ data-vplay-title 视频名（显示在封面左下角，同时是 aria-label）/
+               data-vplay-meta 顶栏右侧来源角标。留空则对应位置不显示。
              ============================================================ -->
-        <div class="vplay" data-vplay
-             data-vplay-src="https://www.bilibili.com/video/BV1dXeQ6tELV"
-             data-vplay-title="《文件未命名喵》演示视频" data-vplay-blurb=""
-             data-vplay-capable="点击封面播放" data-vplay-meta="BILIBILI">
+        <div class="vgrid">
 
-          <div class="vplay-bar" aria-hidden="true">
-            <span class="vplay-dots"><i></i><i></i><i></i></span>
-            <span class="vplay-bar-title"></span>
-            <span class="vplay-badge"></span>
-          </div>
+          <!-- 一列 = 一个视频窗口 + 对应项目说明：下方文字与视频卡片同列左对齐 -->
+          <div class="vcell">
 
-          <div class="vplay-screen">
-            <button class="vplay-cover" type="button" aria-expanded="false" hidden>
-              <span class="vplay-poster" aria-hidden="true"></span>
-              <span class="vplay-shade" aria-hidden="true"></span>
-              <span class="vplay-play" aria-hidden="true"><i></i></span>
-              <span class="vplay-capable"></span>
-            </button>
-            <p class="vplay-hint" hidden></p>
-          </div>
+            <!-- 01《文件未命名喵》· BV1dXeQ6tELV -->
+            <div class="vplay" data-vplay
+                 data-vplay-src="https://www.bilibili.com/video/BV1dXeQ6tELV"
+                 data-vplay-title="01《文件未命名喵》演示视频"
+                 data-vplay-capable="点击封面播放" data-vplay-meta="BILIBILI">
+              <div class="vplay-bar">
+                <span class="vplay-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span class="vplay-bar-title"></span>
+                <span class="vplay-badge"></span>
+              </div>
+              <div class="vplay-screen">
+                <button class="vplay-cover" type="button" aria-expanded="false" hidden>
+                  <span class="vplay-poster" aria-hidden="true"></span>
+                  <img class="vplay-cover-img" src="image/cover-01.jpg" alt=""
+                       loading="lazy" decoding="async" onerror="this.remove()">
+                  <span class="vplay-shade" aria-hidden="true"></span>
+                  <span class="vplay-play" aria-hidden="true"><i></i></span>
+                  <span class="vplay-capable"></span>
+                </button>
+                <p class="vplay-hint" hidden></p>
+              </div>
+            </div><!-- /.vplay 01 -->
 
-          <div class="vplay-foot">
-            <p class="vplay-title"></p>
-            <p class="vplay-blurb"></p>
-          </div>
-        </div><!-- /.vplay -->
+            <div class="proj">
+              <div class="proj-top">
+                <span class="proj-idx">01</span>
+                <span class="proj-name">《文件未命名喵》</span>
+                <span class="proj-meta">卡牌 Roguelike · Godot 4.7 + C#</span>
+              </div>
+              <p class="proj-desc">卡牌肉鸽游戏，拥有卡牌效果体系、Buff/特性、敌人意图状态机、数据配置卡牌编辑器和<a class="desc-hl" href="http://121.199.71.142:8787/index.html" target="_blank" rel="noopener">在线数据分析平台&nbsp;↗</a>。</p>
+            </div>
 
-      </div><!-- /.pane-vwrap -->
+          </div><!-- /.vcell 01 -->
+
+          <!-- 一列 = 一个视频窗口 + 对应项目说明 -->
+          <div class="vcell">
+
+            <!-- 02《中文互联网梗全明星大乱斗》· BV1TEhB6YEBp -->
+            <div class="vplay" data-vplay
+                 data-vplay-src="https://www.bilibili.com/video/BV1TEhB6YEBp"
+                 data-vplay-title="02《中文互联网梗全明星大乱斗》演示视频"
+                 data-vplay-capable="点击封面播放" data-vplay-meta="BILIBILI">
+              <div class="vplay-bar">
+                <span class="vplay-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span class="vplay-bar-title"></span>
+                <span class="vplay-badge"></span>
+              </div>
+              <div class="vplay-screen">
+                <button class="vplay-cover" type="button" aria-expanded="false" hidden>
+                  <span class="vplay-poster" aria-hidden="true"></span>
+                  <img class="vplay-cover-img" src="image/cover-02.jpg" alt=""
+                       loading="lazy" decoding="async" onerror="this.remove()">
+                  <span class="vplay-shade" aria-hidden="true"></span>
+                  <span class="vplay-play" aria-hidden="true"><i></i></span>
+                  <span class="vplay-capable"></span>
+                </button>
+                <p class="vplay-hint" hidden></p>
+              </div>
+            </div><!-- /.vplay 02 -->
+
+            <div class="proj">
+              <div class="proj-top">
+                <span class="proj-idx">02</span>
+                <span class="proj-name">《中文互联网梗全明星大乱斗》</span>
+                <span class="proj-meta">全栈卡牌平台 · Spring Boot + Nuxt 4 (Vue 3) + Godot 4.7 · 组长</span>
+              </div>
+              <p class="proj-desc">前后端分离三端架构：6 职业回合制卡牌战斗 + 抽卡/编队/关卡/商店系统；负责需求拆解、分工与前后端联调。</p>
+            </div>
+
+          </div><!-- /.vcell 02 -->
+
+          <!-- 一列 = 一个视频窗口 + 对应项目说明 -->
+          <div class="vcell">
+
+            <!-- 03《无尽进化》· BV1n8CkYvE3u -->
+            <div class="vplay" data-vplay
+                 data-vplay-src="https://www.bilibili.com/video/BV1n8CkYvE3u"
+                 data-vplay-title="03《无尽进化》GameJam 实录"
+                 data-vplay-capable="点击封面播放" data-vplay-meta="BILIBILI">
+              <div class="vplay-bar">
+                <span class="vplay-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span class="vplay-bar-title"></span>
+                <span class="vplay-badge"></span>
+              </div>
+              <div class="vplay-screen">
+                <button class="vplay-cover" type="button" aria-expanded="false" hidden>
+                  <span class="vplay-poster" aria-hidden="true"></span>
+                  <img class="vplay-cover-img" src="image/cover-03.jpg" alt=""
+                       loading="lazy" decoding="async" onerror="this.remove()">
+                  <span class="vplay-shade" aria-hidden="true"></span>
+                  <span class="vplay-play" aria-hidden="true"><i></i></span>
+                  <span class="vplay-capable"></span>
+                </button>
+                <p class="vplay-hint" hidden></p>
+              </div>
+            </div><!-- /.vplay 03 -->
+
+            <div class="proj">
+              <div class="proj-top">
+                <span class="proj-idx">03</span>
+                <span class="proj-name">《无尽进化》</span>
+                <span class="proj-meta">类吸血鬼幸存者 · Unity（团结引擎）GameJam · 两天完赛</span>
+              </div>
+              <p class="proj-desc">生物主题俯视角生存：波次强度递增、多武器攻击、能量掉落与"升级四选一"成长，原创背景与多结局。</p>
+            </div>
+
+          </div><!-- /.vcell 03 -->
+
+        </div><!-- /.vgrid -->
+
+      </div><!-- /.vstage -->
 
     </div><!-- /.wrap -->
   </section>
@@ -254,7 +306,6 @@
           <ul class="pane-list">
             <li>2025 安徽省机器人大赛（算法赛道）· 省级三等奖</li>
             <li>第十五届安徽省双百大赛（游戏赛道）· 省级三等奖</li>
-            <li>2024 Unity（团结引擎）GameJam · 参赛并通关</li>
           </ul>
         </div>
       </div>

@@ -1271,43 +1271,63 @@
     stop();
     shell.__vplayStop = stop;
 
-    var id = parseSource(shell.getAttribute("data-vplay-src"));
+    /* 按当前 data-vplay-* 重绘整块展示区（可反复调用）。
+       作品集的顶栏切换标签会先把新视频的属性写回壳上，再调这个函数：
+       "换视频" = 换属性 + 重绘，任何时刻只有一支视频的封面在生效。
+       文案（标题/副标题/角标）无论有没有链接都按属性刷新，
+       避免切到「视频待补充」时底栏还残留上一支的名字。 */
+    function render() {
+      stop();                                   // 换源前先彻底停掉上一支
 
-    if (!id) {
-      // 无链接 → 占位；填了但认不出 → 报错提示。两种情况都不加载任何外部资源
-      var bad = !!(shell.getAttribute("data-vplay-src") || "").trim();
-      shell.setAttribute("data-vplay-state", bad ? "error" : "pending");
-      cover.hidden = true;
-      cover.setAttribute("aria-expanded", "false");
-      setHint(hint, bad ? HINT_BAD : HINT_PENDING);
-      return;
+      var raw = (shell.getAttribute("data-vplay-src") || "").trim();
+      var id = parseSource(raw);
+      var label = shell.getAttribute("data-vplay-title") || (id ? "视频展示" : "");
+
+      // 挂到壳上供封面点击时读取：点击时读"当前值"，
+      // 不会像闭包那样把第一次解析出来的旧 id 锁死
+      shell.__vplayId = id;
+      shell.__vplayLabel = label;
+
+      var titleEl = shell.querySelector(".vplay-title");
+      var barTitle = shell.querySelector(".vplay-bar-title");
+      var badge = shell.querySelector(".vplay-badge");
+      if (titleEl) titleEl.textContent = label;
+      if (barTitle) barTitle.textContent = label;
+      if (badge) badge.textContent = shell.getAttribute("data-vplay-meta") || "";
+
+      var blurbEl = shell.querySelector(".vplay-blurb");
+      if (blurbEl) blurbEl.textContent = shell.getAttribute("data-vplay-blurb") || "";
+
+      if (!id) {
+        // 无链接 → 占位；填了但认不出 → 报错提示。两种情况都不加载任何外部资源
+        shell.setAttribute("data-vplay-state", raw ? "error" : "pending");
+        cover.hidden = true;
+        cover.setAttribute("aria-expanded", "false");
+        setHint(hint, raw ? HINT_BAD : HINT_PENDING);
+        return;
+      }
+
+      shell.setAttribute("data-vplay-state", "ready");
+      hint.hidden = true;
+      cover.hidden = false;
+      cover.setAttribute("aria-label", "播放视频：" + label);
+
+      var cap = cover.querySelector(".vplay-capable");
+      if (cap) cap.textContent = shell.getAttribute("data-vplay-capable") || "";
     }
 
-    var label = shell.getAttribute("data-vplay-title") || "视频展示";
-    shell.setAttribute("data-vplay-state", "ready");
-    hint.hidden = true;
-    cover.hidden = false;
-    cover.setAttribute("aria-label", "播放视频：" + label);
+    shell.__vplayRender = render;   // 供作品集切换标签调用
 
-    var cap = cover.querySelector(".vplay-capable");
-    if (cap) cap.textContent = shell.getAttribute("data-vplay-capable") || "";
-
-    var titleEl = shell.querySelector(".vplay-title");
-    var barTitle = shell.querySelector(".vplay-bar-title");
-    var badge = shell.querySelector(".vplay-badge");
-    if (titleEl) titleEl.textContent = label;
-    if (barTitle) barTitle.textContent = label;
-    if (badge) badge.textContent = shell.getAttribute("data-vplay-meta") || "";
-
-    var blurbEl = shell.querySelector(".vplay-blurb");
-    if (blurbEl) blurbEl.textContent = shell.getAttribute("data-vplay-blurb") || "";
-
+    // 封面点击只注册一次；播哪支视频在点击那一刻从壳上读，
+    // 这样反复切换标签也不会叠加出多个点击处理器
     cover.addEventListener("click", function () {
+      var id = shell.__vplayId;
+      if (!id) return;
       if (shell.getAttribute("data-vplay-state") === "playing") return;
       var frame = document.createElement("iframe");
       frame.className = "vplay-frame";
       frame.src = playerUrl(id);
-      frame.title = label;
+      frame.title = shell.__vplayLabel || "视频展示";
       frame.setAttribute("allow", "autoplay; fullscreen; encrypted-media; picture-in-picture");
       frame.setAttribute("allowfullscreen", "");
       frame.setAttribute("scrolling", "no");
@@ -1324,6 +1344,8 @@
     window.addEventListener("keydown", function (e) {
       if (e.key === "Escape" || e.keyCode === 27) stop();
     });
+
+    render();
   }
 
   Array.prototype.forEach.call(shells, setup);
@@ -1339,3 +1361,113 @@
   });
 })();
 
+/* ============================================================
+   URL 锚点同步 · 分享友好
+   - 滚到哪一屏，地址栏就同步成 #sN（第 1 屏恢复成裸网址）：
+     以后直接复制地址栏，就是"点进去直达这一屏"的链接
+   - 带 #sN 打开时：先立即定位，再在异步内容（贡献快照 / Steam
+     封面墙渲染会改变页面高度）落地后重新校正落点，避免落偏
+   - 用户一旦自己滚轮/触摸/按键，就停止自动校正，不抢用户滚动
+   - 写 hash 用 history.replaceState：不新增历史记录（浏览器返回键
+     仍是离开本站，不会在几屏之间循环），也不会触发 hashchange
+   ============================================================ */
+(function () {
+  "use strict";
+
+  var slides = Array.prototype.slice.call(document.querySelectorAll(".slide"));
+  if (!slides.length) return;
+
+  var root = document.documentElement;
+  var autoLand = true;   // 是否仍允许自动校正落点（用户自己操作后关闭）
+  var lastId = "";       // 上次写进地址栏的锚点，避免重复写
+
+  function findById(id) {
+    for (var i = 0; i < slides.length; i++) {
+      if (slides[i].id === id) return slides[i];
+    }
+    return null;
+  }
+
+  /* 瞬移定位：临时把 scroll-behavior 压成 auto，绕开 CSS 的 smooth ——
+     直接打开分享链接时不该看到一段"从顶部滑下来"的动画 */
+  function jumpTo(el) {
+    var prev = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    window.scrollTo(0, el.offsetTop);
+    root.style.scrollBehavior = prev;
+  }
+
+  /* 视口中心所在的屏（与平滑导航模块判据一致，保证页码标记与锚点同步） */
+  function current() {
+    var mid = window.scrollY + window.innerHeight / 2;
+    var best = slides[0], bestD = Infinity;
+    slides.forEach(function (s) {
+      var d = Math.abs((s.offsetTop + s.offsetHeight / 2) - mid);
+      if (d < bestD) { bestD = d; best = s; }
+    });
+    return best;
+  }
+
+  /* 同步地址栏：#sN；第 1 屏回到裸网址（更干净，也才是真正的"主页"） */
+  function writeHash(el) {
+    var id = (el && el.id) ? el.id : "";
+    if (!id || id === lastId) return;
+    lastId = id;
+    var target = (el === slides[0]) ? location.pathname + location.search : "#" + id;
+    try {
+      history.replaceState(null, "", target);
+    } catch (err) { /* file:// 等不允许改地址的场景：忽略即可 */ }
+  }
+
+  /* 按 URL 里的 #sN 定位；已在位就不动，避免和原生锚点跳转互相打断 */
+  function land() {
+    var id = (location.hash || "").replace(/^#/, "");
+    if (!id) return;
+    var el = findById(id);
+    if (!el) return;
+    if (Math.abs(window.scrollY - el.offsetTop) <= 2) { lastId = id; return; }
+    jumpTo(el);
+    lastId = id;
+  }
+
+  function reland() { if (autoLand) land(); }
+
+  land();   // 首次定位（本脚本置于 body 末尾，DOM 已就绪）
+
+  /* 异步内容落地会改变页面高度（贡献快照渲染、Steam 封面墙渲染、
+     字体换入），这些时机把落点校回目标屏 */
+  window.addEventListener("load", reland);
+  window.addEventListener("site:reflow", reland);
+  if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+    document.fonts.ready.then(reland);
+  }
+  if (typeof ResizeObserver === "function") {
+    var ro = new ResizeObserver(function () {
+      if (!autoLand) { ro.disconnect(); return; }   // 用户已接管：收工
+      land();
+    });
+    ro.observe(document.body);
+  }
+
+  /* 滚动 → 地址栏跟着变（rAF 节流，滚动中不必每帧都写） */
+  var scheduled = false;
+  window.addEventListener("scroll", function () {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(function () {
+      scheduled = false;
+      writeHash(current());
+    });
+  }, { passive: true });
+
+  /* 用户自己动过（滚轮 / 触摸 / 按键）→ 放弃自动校正，不抢用户的滚动 */
+  ["wheel", "touchstart", "keydown"].forEach(function (ev) {
+    window.addEventListener(ev, function () { autoLand = false; }, { passive: true });
+  });
+
+  /* 地址栏 hash 变化（浏览器前进后退 / 手动改 URL / 窄屏原生锚点）→ 跟着定位 */
+  window.addEventListener("hashchange", function () {
+    autoLand = true;   // 有了新锚点，重新允许校正
+    land();
+  });
+})();
