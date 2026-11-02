@@ -1117,6 +1117,41 @@
 })();
 
 /* ============================================================
+   「往下滑动」提示 · 滚动淡出
+   提示本身是 fixed 悬浮在屏幕底部（不参与排版）；这里只负责：
+   往下滚过一小段距离后加 .is-away 让它淡出，滚回顶部再淡回来。
+   因此它只在"页面顶部区域"可见，不会跟着内容一路压在其它页面上。
+   与上面的翻页导航模块互不干涉：那边只管"在不在首页"，这里只管"滚了多远"。
+   ============================================================ */
+(function () {
+  "use strict";
+  var hintEl = document.getElementById("scrollHint");
+  if (!hintEl) return;
+
+  // 门槛取屏高的 40%，最多 420px：手机上大约滑半屏就消失，桌面一屏基本不受影响
+  function threshold() {
+    return Math.min(window.innerHeight * 0.4, 420);
+  }
+
+  var scheduled = false;
+
+  function sync() {
+    scheduled = false;
+    hintEl.classList.toggle("is-away", window.scrollY > threshold());
+  }
+
+  function onScroll() {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(sync);
+  }
+
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll, { passive: true });
+  sync();   // 打开带锚点的链接（直接落在中间某屏）时也要立刻是正确的状态
+})();
+
+/* ============================================================
    回到顶部按钮 · 降级逻辑
    - 主平滑导航模块（window.__navModule）启用时，显示状态与
      慢滑回顶均由该模块负责，这里不重复处理

@@ -1569,6 +1569,8 @@ html.js-anim .slide-pane.in-view .pane-vwrap .vplay {
   font-weight: 600;
   letter-spacing: 0.18em;
   color: var(--dim);
+  /* 它是悬浮层，可能压在文字/封面上 —— 加一层暗色投影保证始终读得清 */
+  text-shadow: 0 1px 10px rgba(4, 7, 20, 0.92), 0 0 22px rgba(4, 7, 20, 0.72);
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
@@ -1580,22 +1582,11 @@ html.js-anim .slide-pane.in-view .pane-vwrap .vplay {
   visibility: visible;
 }
 
-/* ===== 手机端：游戏机正下方的「往下滑动」提示 =====
-   桌面完全不显示（display: none），只有 ≤600px 的竖屏手机才出现。
-   与上面那条 fixed 的 .scroll-hint 互斥：手机端那条被隐藏，只留这一条，
-   而且它是文档流里的元素，固定定位不会压住下面的作品集标题。 */
-.hero-scroll-cue {
-  display: none;
-  margin: 4px 0 0;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--mono);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  color: var(--dim);
-  text-align: center;
+/* 往下滚过一段距离后淡出：只在页面顶部区域显示。
+   与 .show 同特异性，靠写在后面覆盖它；滚回顶部时去掉该类即恢复 */
+.scroll-hint.is-away {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .scroll-hint-arrows {
@@ -1659,10 +1650,7 @@ html.js-anim .slide-pane.in-view .pane-vwrap .vplay {
   html { scroll-snap-type: none; }
   .slide { min-height: 0; scroll-snap-align: none; scroll-snap-stop: normal; }
   .pager { display: none; }
-  /* 矮屏（手机横屏）里这条固定提示会横在内容中间，挡视频卡 / 正文，直接收起 */
-  .scroll-hint { display: none; }
-  /* 翻页导航已经隐藏，作品集就不必再为它预留左下的 240px —— 否则手机横屏
-     （宽 640~930、高 <680）会白白浪费一大条边距，卡片被压得很窄 */
+  /* 作品集不必再为左下的翻页导航预留 240px */
   .vstage { max-width: min(92vw, 1240px); }
 }
 
@@ -1828,22 +1816,23 @@ html.js-anim .slide-pane.in-view .pane-vwrap .vplay {
   .contact-list li { flex-direction: column; align-items: flex-start; gap: 3px; padding: 9px 0; }
   .contact-list a { font-size: 14px; }
 
-  /* --- 6. 固定浮层：手机上这些会一直压在内容上 --- */
-  .scroll-hint { display: none; }   /* 滑动手势是手机上最不缺的常识，这条提示只会挡住内容 */
-  .pager { display: none; }         /* ≤560px 已隐藏，这里把 561–600px 也覆盖掉 */
-  #backToTop { right: 12px; bottom: 14px; padding: 6px 10px; font-size: 12px; }
-
-  /* 游戏机正下方的「往下滑动」提示：替代上面那条固定提示，居中显示 */
-  .hero-scroll-cue {
-    display: flex;
-    margin-top: 14px;
+  /* --- 6. 固定浮层 --- */
+  /* 「往下滑动」提示：固定在屏幕底部居中（悬浮，不占排版），
+     往下滚一段后由 script.js 加 .is-away 淡出，只在页面顶部区域可见 */
+  .scroll-hint {
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    gap: 7px;
+    font-size: 14px;
+    letter-spacing: 0.14em;
   }
-  .hero-scroll-cue .scroll-hint-arrow {
+  .scroll-hint-arrow {
     width: 14px;
     height: 14px;
     border-width: 2px;
   }
-  .hero-scroll-cue .scroll-hint-arrow + .scroll-hint-arrow { margin-top: -8px; }
+  .scroll-hint-arrow + .scroll-hint-arrow { margin-top: -8px; }
+  .pager { display: none; }         /* ≤560px 已隐藏，这里把 561–600px 也覆盖掉 */
+  #backToTop { right: 12px; bottom: 14px; padding: 6px 10px; font-size: 12px; }
 
   /* --- 7. 渐变标题的合成层问题 ---
      部分手机内核对"opacity/transform 合成层 + background-clip: text"
