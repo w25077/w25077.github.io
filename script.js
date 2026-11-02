@@ -1028,6 +1028,31 @@
   var SNAPSHOT_URL = "data/steam_games.json";
   var CDN = "https://cdn.akamai.steamstatic.com/steam/apps/";
 
+  /* Steam 并不是每款游戏都出了小胶囊图（capsule_231x87）。
+     实测规律：
+       · 新上架 / 刚发售的游戏常常只有 header（460×215），甚至只有竖版库图；
+       · 未发售、锁区或已下架的作品（如 Phantom Blade Zero、Vampire Crawlers）
+         四张商店图全都没有 —— 这种只能显示纯文字块。
+     所以这里按"小胶囊 → 头图 → 竖版库图"依次回退。
+     卡片是固定 231:87 的槽位 + object-fit: cover，比例不同的图只会被裁切，不会变形。 */
+  var COVER_CANDIDATES = ["capsule_231x87.jpg", "header.jpg", "library_600x900.jpg"];
+
+  /* 封面回退：当前 src 加载失败时换下一个候选；候选用尽才给卡片打 noimg
+     （noimg 会隐藏破图图标，只留游戏名与时长角标）。
+     逐个从 data-cover-fallback 里取，取一个少一个，不会来回重试。 */
+  window.__steamCoverFallback = function (img) {
+    if (!img) return;
+    var rest = img.getAttribute("data-cover-fallback") || "";
+    if (rest) {
+      var list = rest.split("|");
+      img.setAttribute("data-cover-fallback", list.slice(1).join("|"));
+      img.src = list[0];
+      return;
+    }
+    var tile = img.parentNode;
+    if (tile) tile.classList.add("noimg");
+  };
+
   function pad2(n) { return n < 10 ? "0" + n : String(n); }
 
   function fmtStamp(iso) {
@@ -1061,12 +1086,18 @@
   }
 
   function tileHtml(g, i) {
-    var img = g.appid ? CDN + esc(g.appid) + "/capsule_231x87.jpg" : "";
-    var imgTag = img
-      ? '<img src="' + img + '" alt="' + esc(g.name) + '" loading="lazy"' +
-        ' onerror="this.parentNode.classList.add(\'noimg\')">'
+    // 第一个候选放 src，其余写进 data-cover-fallback，失败时由 __steamCoverFallback 依次接手
+    var urls = g.appid
+      ? COVER_CANDIDATES.map(function (k) {
+          return CDN + encodeURIComponent(g.appid) + "/" + k;
+        })
+      : [];
+    var imgTag = urls.length
+      ? '<img src="' + urls[0] + '" alt="' + esc(g.name) + '" loading="lazy"' +
+        ' data-cover-fallback="' + esc(urls.slice(1).join("|")) + '"' +
+        ' onerror="__steamCoverFallback(this)">'
       : "";
-    return '<a class="st-tile' + (img ? "" : " noimg") + '" ' +
+    return '<a class="st-tile' + (urls.length ? "" : " noimg") + '" ' +
       'href="https://store.steampowered.com/app/' +
       esc(g.appid) + '" target="_blank" rel="noopener" ' +
       'title="' + esc(g.name) + " · " + esc(shortH(g.hours)) + ' 小时">' +
