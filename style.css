@@ -862,7 +862,7 @@ html.js-anim .slide-pane.in-view .pane-box {
   animation: none;   /* 动画声明优先级高于普通声明，这里必须显式关掉才能用上面这行辉光 */
 }
 
-/* ===== 作品集舞台：标题 + 三列（每列 = 一个视频窗口 + 该项目的说明） ===== */
+/* ===== 作品集舞台：标题 + 四列（每列 = 一个视频窗口 + 该项目的说明） ===== */
 /* 纵向排列，整页随窗口尺寸自适应 */
 .vstage {
   display: flex;
@@ -876,12 +876,13 @@ html.js-anim .slide-pane.in-view .pane-box {
 
 .vstage-head { max-width: 640px; }
 
-/* 三列等宽：每列是"视频窗口 + 项目说明"，说明文字因此天然与视频左右对齐。
-   说明不再另起三行叠在下面（原来 = 视频一排 + 文字三行），
-   纵向空间反而更宽松，所以封面可以保持完整 16:9，任何视口都不裁切 */
+/* 四列等宽：每列是"视频窗口 + 项目说明"，说明文字因此天然与视频左右对齐。
+   说明不再另起几行叠在下面（原来 = 视频一排 + 文字几行），
+   纵向空间反而更宽松，所以封面可以保持完整 16:9，任何视口都不裁切。
+   列宽约 190~300px：封面完整可辨，说明文字约合每行 12~16 字，适合横向阅读 */
 .vgrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: clamp(12px, 1.5vw, 20px);
   align-items: start;
 }
@@ -919,8 +920,15 @@ html.js-anim .slide-pane.in-view .vstage {
   transform: none;
 }
 
-/* 窄屏：三列改为竖排（每列内部结构不变：视频在上、说明在下）。
-   此时整页本来就是自由滚动，可一路滚完三个作品 */
+/* 中窄屏（平板 / 半屏窗口）：四列挤成一排会让每列窄到说明文字逐字换行，
+   这里折成 2×2，每列约 280~420px，视频与说明都还舒展，
+   整页仍在一屏可滚动范围内 */
+@media (max-width: 1180px) {
+  .vgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* 窄屏：多列改为竖排（每列内部结构不变：视频在上、说明在下）。
+   此时整页本来就是自由滚动，可一路滚完四个作品 */
 @media (max-width: 880px) {
   .vgrid { grid-template-columns: 1fr; max-width: 560px; margin: 0 auto; }
 }

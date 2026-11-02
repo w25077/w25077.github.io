@@ -127,11 +127,11 @@
   </section>
 
   <!-- ============================================================
-       第 2 页：作品集（三个演示视频 + 项目说明）
+       第 2 页：作品集（四个演示视频 + 项目说明）
        ============================================================ -->
   <section class="slide slide-pane" id="s2">
     <div class="wrap">
-      <!-- 纵向舞台：标题 + 三列（每列 = 一个视频窗口 + 该项目说明，文字与视频同列左对齐） -->
+      <!-- 纵向舞台：标题 + 四列（每列 = 一个视频窗口 + 该项目说明，文字与视频同列左对齐） -->
       <div class="vstage">
 
         <div class="vstage-head">
@@ -140,7 +140,7 @@
         </div>
 
         <!-- ============================================================
-             三个视频窗口 · 每列一个项目：上面是视频、下面是该项目的说明
+             四个视频窗口 · 每列一个项目：上面是视频、下面是该项目的说明
              ▸ 未点击时：显示该视频的 B 站封面（本地 image/cover-0N.jpg），
                顶栏是视频名、封面右下角是"点击封面播放"；点了才注入 B 站
                播放器（首屏不加载任何播放器，不拖慢页面）。
@@ -269,6 +269,43 @@
             </div>
 
           </div><!-- /.vcell 03 -->
+
+          <!-- 一列 = 一个视频窗口 + 对应项目说明 -->
+          <div class="vcell">
+
+            <!-- 04《中国古代数学之旅（解密小游戏）》· BV1fkp16DEH1 -->
+            <div class="vplay" data-vplay
+                 data-vplay-src="https://www.bilibili.com/video/BV1fkp16DEH1"
+                 data-vplay-title="04《中国古代数学之旅（解密小游戏）》演示视频"
+                 data-vplay-capable="点击封面播放" data-vplay-meta="BILIBILI">
+              <div class="vplay-bar">
+                <span class="vplay-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span class="vplay-bar-title"></span>
+                <span class="vplay-badge"></span>
+              </div>
+              <div class="vplay-screen">
+                <button class="vplay-cover" type="button" aria-expanded="false" hidden>
+                  <span class="vplay-poster" aria-hidden="true"></span>
+                  <img class="vplay-cover-img" src="image/cover-04.jpg" alt=""
+                       loading="lazy" decoding="async" onerror="this.remove()">
+                  <span class="vplay-shade" aria-hidden="true"></span>
+                  <span class="vplay-play" aria-hidden="true"><i></i></span>
+                  <span class="vplay-capable"></span>
+                </button>
+                <p class="vplay-hint" hidden></p>
+              </div>
+            </div><!-- /.vplay 04 -->
+
+            <div class="proj">
+              <div class="proj-top">
+                <span class="proj-idx">04</span>
+                <span class="proj-name">《中国古代数学之旅》</span>
+                <span class="proj-meta">2D 解密小游戏 · 2024 安徽省双百大赛（游戏赛道）省级三等奖</span>
+              </div>
+              <p class="proj-desc">以中国古代数学史为线索的 2D 解密小游戏：把十进位值制、算筹记数等知识点做成关内谜题，边解谜边读数学史。合作者：@炎泽翼。</p>
+            </div>
+
+          </div><!-- /.vcell 04 -->
 
         </div><!-- /.vgrid -->
 
