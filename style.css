@@ -43,6 +43,9 @@ html {
   background-color: var(--paper);   /* 过滚区域 / 露底与最深层同色 */
   scroll-behavior: smooth;
   scroll-snap-type: y mandatory;
+  /* 明确声明只支持深色：部分手机浏览器（Android Chrome / 三星浏览器）
+     的"强制深色 / 自动反色"会据此跳过本站，避免把浅色标题反成黑灰 */
+  color-scheme: dark;
 }
 
 /* 横向溢出兜底：
@@ -187,17 +190,11 @@ a:hover { color: var(--accent); }
   border: 1px solid #c3cdfa;
   border-radius: 999px;
   cursor: default;
-  transition: transform 0.2s ease, background-color 0.2s ease,
-              border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* 悬停：微微上浮并点亮为点缀色 */
-.tags li:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(125, 140, 255, 0.35);
-}
+/* 注：技能标签只是静态文字（cursor: default，不可点），
+   所以刻意不给 :hover / :focus 任何变化 —— 之前的上浮+发光会让人以为可以点，
+   触屏上还会出现"点一下颜色就粘住"的假悬停。 */
 
 .kicker {
   font-family: var(--mono);
@@ -237,13 +234,16 @@ a:hover { color: var(--accent); }
   color: var(--ink);
 }
 
-/* 大标题主词：月白 → 蓝紫的细腻渐变（沿用整站深空配色，字体字号不变） */
+/* 大标题主词：月白 → 蓝紫的细腻渐变（沿用整站深空配色，字体字号不变）
+   注意 color 不再写 transparent：background-clip: text 一旦不生效
+   （旧内核 / 系统强制对比 / 合成层光栅化异常），transparent 会让文字
+   直接消失或退化成黑色。这里给它一个亮色兜底，任何情况下都还是浅色标题。 */
 .display-main {
-  background: linear-gradient(112deg, #ffffff 18%, #c9d2ff 55%, var(--accent) 100%);
+  background-image: linear-gradient(112deg, #ffffff 18%, #c9d2ff 55%, var(--accent) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  color: transparent;
+  color: #e9edff;                    /* 兜底文字色：裁切失效时仍是亮色 */
 }
 
 .masthead-sites {
@@ -703,13 +703,35 @@ html.js-anim .slide-pane.in-view .pane-box {
   font-size: clamp(44px, 7vw, 76px);
   line-height: 1.05;
   letter-spacing: 0.06em;
-  color: var(--ink);
-  /* 与首页大标题主词一致的月白 → 蓝紫渐变 */
-  background: linear-gradient(112deg, #ffffff 18%, #c9d2ff 55%, var(--accent) 100%);
+  /* 与首页大标题主词一致的月白 → 蓝紫渐变。
+     同样不再用 color: transparent 收尾 —— 换成亮色兜底，
+     避免裁切失效时标题变成黑色/灰色（手机上尤其明显） */
+  background-image: linear-gradient(112deg, #ffffff 18%, #c9d2ff 55%, var(--accent) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  color: transparent;
+  color: #e9edff;                    /* 兜底文字色：裁切失效时仍是亮色 */
+}
+
+/* 内核对 background-clip: text 支持不全时，索性不要渐变，直接纯亮色 */
+@supports not ((background-clip: text) or (-webkit-background-clip: text)) {
+  .display-main,
+  .pane-title {
+    background: none;
+    -webkit-text-fill-color: currentColor;
+    color: #e9edff;
+  }
+}
+
+/* 系统强制高对比 / 强制反色模式：背景裁切会被忽略并把文字涂成黑色，
+   这里退回纯色，保证标题始终清晰可读 */
+@media (forced-colors: active) {
+  .display-main,
+  .pane-title {
+    background: none;
+    -webkit-text-fill-color: currentColor;
+    color: CanvasText;
+  }
 }
 
 .pane-text {
@@ -1558,6 +1580,24 @@ html.js-anim .slide-pane.in-view .pane-vwrap .vplay {
   visibility: visible;
 }
 
+/* ===== 手机端：游戏机正下方的「往下滑动」提示 =====
+   桌面完全不显示（display: none），只有 ≤600px 的竖屏手机才出现。
+   与上面那条 fixed 的 .scroll-hint 互斥：手机端那条被隐藏，只留这一条，
+   而且它是文档流里的元素，固定定位不会压住下面的作品集标题。 */
+.hero-scroll-cue {
+  display: none;
+  margin: 4px 0 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: var(--dim);
+  text-align: center;
+}
+
 .scroll-hint-arrows {
   display: flex;
   flex-direction: column;
@@ -1792,4 +1832,30 @@ html.js-anim .slide-pane.in-view .pane-vwrap .vplay {
   .scroll-hint { display: none; }   /* 滑动手势是手机上最不缺的常识，这条提示只会挡住内容 */
   .pager { display: none; }         /* ≤560px 已隐藏，这里把 561–600px 也覆盖掉 */
   #backToTop { right: 12px; bottom: 14px; padding: 6px 10px; font-size: 12px; }
+
+  /* 游戏机正下方的「往下滑动」提示：替代上面那条固定提示，居中显示 */
+  .hero-scroll-cue {
+    display: flex;
+    margin-top: 14px;
+  }
+  .hero-scroll-cue .scroll-hint-arrow {
+    width: 14px;
+    height: 14px;
+    border-width: 2px;
+  }
+  .hero-scroll-cue .scroll-hint-arrow + .scroll-hint-arrow { margin-top: -8px; }
+
+  /* --- 7. 渐变标题的合成层问题 ---
+     部分手机内核对"opacity/transform 合成层 + background-clip: text"
+     渲染有 bug，会把标题涂成黑/灰。手机上把这几层入场动画全部去掉，
+     标题直接以最终状态渲染 —— 视觉上只是少了不到 1s 的淡入。
+     涉及：首页标题（.hero-id 的 rise）、内容页（.pane-box）、作品集（.vstage） */
+  .hero-id,
+  html.js-anim .slide-pane .pane-box,
+  html.js-anim .slide-pane .vstage {
+    opacity: 1;
+    transform: none;
+    transition: none;
+    animation: none;
+  }
 }
